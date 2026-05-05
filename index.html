@@ -4191,6 +4191,72 @@
       margin-top: 4px;
     }
 
+    /* ── Admin extras ── */
+    .admin-action-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid var(--border-subtle);
+      align-items: center;
+    }
+    .admin-rename-wrap {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+    }
+    .admin-rename-input {
+      flex: 1;
+      min-width: 0;
+      border: 1px solid var(--border-strong);
+      background: var(--input-bg);
+      color: var(--text-main);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-family: inherit;
+      outline: none;
+    }
+    .admin-rename-input:focus {
+      border-color: var(--input-border-focus);
+    }
+    .admin-rename-btn {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      white-space: nowrap;
+    }
+    .admin-ban-btn {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      white-space: nowrap;
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+    .admin-ban-btn.banned {
+      background: var(--danger);
+      color: #fff;
+    }
+    .banned-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: var(--danger);
+      color: #fff;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+    .member-item.banned-member .member-name {
+      opacity: 0.5;
+      text-decoration: line-through;
+    }
+
     @media (max-width: 640px) {
       .game-grid { grid-template-columns: 1fr 1fr; }
       .game-card { padding: 10px 8px; }
@@ -4725,7 +4791,11 @@
 
       <div class="modal-body">
         <div class="modal-hint" id="adminModalHint">
-          Manage member timeouts. Admin accounts cannot be timed out here.
+          Manage members — timeout, rename, ban, or clear the entire chat.
+        </div>
+        <!-- Admin global actions -->
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+          <button class="btn" id="adminClearChatBtn" type="button" style="border-color:var(--danger);color:var(--danger);font-size:12px;">🗑 Clear All Chat</button>
         </div>
         <div class="admin-panel-list" id="adminPanelList"></div>
       </div>
@@ -4960,7 +5030,7 @@
     const changelogModalBackdrop = document.getElementById("changelogModalBackdrop");
 
     let currentUser = null;
-    let currentProfile = { displayName: null, photoData: null, isAdmin: false, timeoutUntil: null };
+    let currentProfile = { displayName: null, photoData: null, isAdmin: false, timeoutUntil: null, banned: false };
     // Expose for voice chat script to check admin
     Object.defineProperty(window, '_currentProfile', { get: () => currentProfile });
     let unsubscribeMessages = null;
@@ -5190,7 +5260,8 @@
     function applyChatAccessState() {
       const timedOut = isTimedOut(currentProfile.timeoutUntil);
       const isAdmin = !!currentProfile.isAdmin;
-      const canChat = !!currentUser && !timedOut;
+      const isBanned = !!currentProfile.banned;
+      const canChat = !!currentUser && !timedOut && !isBanned;
 
       messageInput.disabled = !canChat;
       sendBtn.disabled = !canChat;
@@ -5201,6 +5272,12 @@
       if (!currentUser) {
         inputStatePill.textContent = "Signed out";
         statusBanner.textContent = "Sign in to start chatting.";
+        return;
+      }
+
+      if (isBanned) {
+        inputStatePill.textContent = "Banned";
+        statusBanner.textContent = "You have been banned from this chat.";
         return;
       }
 
@@ -5264,7 +5341,7 @@
 
     function setSignedOutUI() {
       currentUser = null;
-      currentProfile = { displayName: null, photoData: null, isAdmin: false, timeoutUntil: null };
+      currentProfile = { displayName: null, photoData: null, isAdmin: false, timeoutUntil: null, banned: false };
       userLabel.textContent = "Not signed in";
       userLabelSub.textContent = "Click to edit profile";
       authBtn.textContent = "Sign in";
@@ -5315,6 +5392,9 @@
       adminModalBackdrop.classList.remove("visible");
     }
 
+    // Wire Clear Chat button (set up once the element exists)
+    document.getElementById("adminClearChatBtn").addEventListener("click", adminClearChat);
+
     function openConfirmModal(message, payload) {
       pendingDeleteRequest = payload;
       confirmModalError.textContent = "";
@@ -5338,6 +5418,7 @@
       users.forEach((user) => {
         const isSelf = currentUser && user.uid === currentUser.uid;
         const isAdmin = isAdminEmail(user.email);
+        const isBanned = !!user.banned;
 
         const card = document.createElement("div");
         card.className = "admin-user-card";
@@ -5372,6 +5453,12 @@
           you.textContent = "You";
           name.appendChild(you);
         }
+        if (isBanned) {
+          const bannedBadge = document.createElement("span");
+          bannedBadge.className = "banned-badge";
+          bannedBadge.textContent = "BANNED";
+          name.appendChild(bannedBadge);
+        }
 
         const email = document.createElement("div");
         email.className = "admin-user-email";
@@ -5379,7 +5466,7 @@
 
         const status = document.createElement("div");
         status.className = "admin-user-status";
-        status.textContent = formatTimeoutStatus(user.timeoutUntil);
+        status.textContent = isBanned ? "Banned from chat" : formatTimeoutStatus(user.timeoutUntil);
 
         meta.appendChild(name);
         meta.appendChild(email);
@@ -5389,6 +5476,7 @@
         card.appendChild(head);
 
         if (!isAdmin && !isSelf) {
+          // ── Timeout grid ──
           const grid = document.createElement("div");
           grid.className = "admin-timeout-grid";
 
@@ -5409,6 +5497,45 @@
           grid.appendChild(clearBtn);
 
           card.appendChild(grid);
+
+          // ── Rename + Ban row ──
+          const actionRow = document.createElement("div");
+          actionRow.className = "admin-action-row";
+
+          // Rename
+          const renameWrap = document.createElement("div");
+          renameWrap.className = "admin-rename-wrap";
+          const renameInput = document.createElement("input");
+          renameInput.type = "text";
+          renameInput.className = "admin-rename-input";
+          renameInput.placeholder = "New display name…";
+          renameInput.value = user.displayName || "";
+          const renameBtn = document.createElement("button");
+          renameBtn.className = "btn admin-rename-btn";
+          renameBtn.type = "button";
+          renameBtn.textContent = "Rename";
+          renameBtn.addEventListener("click", () => {
+            const newName = renameInput.value.trim();
+            if (!newName) return;
+            renameUser(user.uid, newName);
+          });
+          renameInput.addEventListener("keydown", e => { if (e.key === "Enter") renameBtn.click(); });
+          renameWrap.appendChild(renameInput);
+          renameWrap.appendChild(renameBtn);
+
+          // Ban / Unban
+          const banBtn = document.createElement("button");
+          banBtn.className = "btn admin-ban-btn" + (isBanned ? " banned" : "");
+          banBtn.type = "button";
+          banBtn.textContent = isBanned ? "Unban" : "Ban";
+          banBtn.addEventListener("click", () => {
+            if (isBanned) unbanUser(user.uid);
+            else banUser(user.uid);
+          });
+
+          actionRow.appendChild(renameWrap);
+          actionRow.appendChild(banBtn);
+          card.appendChild(actionRow);
         }
 
         adminPanelList.appendChild(card);
@@ -5440,6 +5567,89 @@
       } catch (e) {
         console.error("Error clearing timeout:", e);
         adminModalError.textContent = "Failed to clear timeout.";
+      }
+    }
+
+    async function renameUser(uid, newName) {
+      if (!currentUser || !currentProfile.isAdmin) return;
+      adminModalError.textContent = "";
+      try {
+        await db.collection("users").doc(uid).set({
+          displayName: newName,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        // Update local cache so admin panel re-renders immediately
+        if (userCache[uid]) userCache[uid].displayName = newName;
+        renderAdminPanel();
+      } catch (e) {
+        console.error("Error renaming user:", e);
+        adminModalError.textContent = "Failed to rename user.";
+      }
+    }
+
+    async function banUser(uid) {
+      if (!currentUser || !currentProfile.isAdmin) return;
+      adminModalError.textContent = "";
+      try {
+        await db.collection("users").doc(uid).set({
+          banned: true,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        if (userCache[uid]) userCache[uid].banned = true;
+        renderAdminPanel();
+      } catch (e) {
+        console.error("Error banning user:", e);
+        adminModalError.textContent = "Failed to ban user.";
+      }
+    }
+
+    async function unbanUser(uid) {
+      if (!currentUser || !currentProfile.isAdmin) return;
+      adminModalError.textContent = "";
+      try {
+        await db.collection("users").doc(uid).set({
+          banned: false,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        if (userCache[uid]) userCache[uid].banned = false;
+        renderAdminPanel();
+      } catch (e) {
+        console.error("Error unbanning user:", e);
+        adminModalError.textContent = "Failed to unban user.";
+      }
+    }
+
+    async function adminClearChat() {
+      if (!currentUser || !currentProfile.isAdmin) return;
+      if (!confirm("Delete ALL messages in the chat? This cannot be undone.")) return;
+      adminModalError.textContent = "";
+      try {
+        // Firestore doesn't support deleting a collection directly from client,
+        // so we batch-delete all messages in pages of 500.
+        let deleted = 0;
+        while (true) {
+          const snap = await db.collection("messages").limit(500).get();
+          if (snap.empty) break;
+          const batch = db.batch();
+          snap.docs.forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
+          deleted += snap.docs.length;
+          if (snap.docs.length < 500) break;
+        }
+        adminModalError.textContent = "";
+        // Reset local message state
+        allDocs = [];
+        renderedIds.clear();
+        oldestCursor = null;
+        firstLoadDone = false;
+        messagesEl.innerHTML = "";
+        if (!messagesEl.contains(loadOlderSent)) messagesEl.prepend(loadOlderSent);
+        if (!messagesEl.contains(loadOlderBtn))  messagesEl.insertBefore(loadOlderBtn, loadOlderSent.nextSibling);
+        emptyStateEl.style.display = "block";
+        closeAdminModal();
+      } catch (e) {
+        console.error("Error clearing chat:", e);
+        adminModalError.textContent = "Failed to clear chat: " + (e.message || e);
       }
     }
 
@@ -6141,6 +6351,14 @@
           main.appendChild(timeoutSpan);
         }
 
+        if (data.banned) {
+          const bannedSpan = document.createElement("span");
+          bannedSpan.className = "member-status";
+          bannedSpan.style.color = "var(--danger)";
+          bannedSpan.textContent = "Banned";
+          main.appendChild(bannedSpan);
+        }
+
         row.appendChild(avatar);
         row.appendChild(main);
 
@@ -6152,6 +6370,7 @@
 
       if (currentUser && userCache[currentUser.uid]) {
         currentProfile.timeoutUntil = userCache[currentUser.uid].timeoutUntil || null;
+        currentProfile.banned = !!userCache[currentUser.uid].banned;
         currentProfile.isAdmin = !!userCache[currentUser.uid].isAdmin || isAdminEmail(userCache[currentUser.uid].email || currentUser.email);
         applyChatAccessState();
       }
@@ -6431,6 +6650,10 @@
       if ((!text && !attachment) || !currentUser) return;
       if (isTimedOut(currentProfile.timeoutUntil)) {
         statusBanner.textContent = `You are timed out. ${formatTimeoutStatus(currentProfile.timeoutUntil)}.`;
+        return;
+      }
+      if (currentProfile.banned) {
+        statusBanner.textContent = "You have been banned from this chat.";
         return;
       }
 
@@ -6782,7 +7005,7 @@
     }
 
     async function loadUserProfile(user) {
-      currentProfile = { displayName: null, photoData: null, isAdmin: false, timeoutUntil: null };
+      currentProfile = { displayName: null, photoData: null, isAdmin: false, timeoutUntil: null, banned: false };
       try {
         const doc = await db.collection("users").doc(user.uid).get();
         if (doc.exists) {
@@ -6790,12 +7013,14 @@
           currentProfile.displayName = data.displayName || user.displayName || null;
           currentProfile.photoData = data.photoData || null;
           currentProfile.timeoutUntil = data.timeoutUntil || null;
+          currentProfile.banned = !!data.banned;
           currentProfile.isAdmin =
             !!data.isAdmin || isAdminEmail(data.email || user.email);
         } else {
           currentProfile.displayName = user.displayName || null;
           currentProfile.photoData = null;
           currentProfile.timeoutUntil = null;
+          currentProfile.banned = false;
           currentProfile.isAdmin = isAdminEmail(user.email);
           await db.collection("users").doc(user.uid).set({
             displayName: currentProfile.displayName || user.email || "User",
@@ -6803,6 +7028,7 @@
             photoData: null,
             isAdmin: currentProfile.isAdmin,
             timeoutUntil: null,
+            banned: false,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           }, { merge: true });
         }
@@ -6811,6 +7037,7 @@
         currentProfile.displayName = user.displayName || null;
         currentProfile.photoData = null;
         currentProfile.timeoutUntil = null;
+        currentProfile.banned = false;
         currentProfile.isAdmin = isAdminEmail(user.email);
       }
     }
@@ -10174,16 +10401,17 @@
       // in place of the join button — only runs once per game
       if (isGameHost && activeInviteMsgId && !gs._endedMsgPosted) {
         gs._endedMsgPosted = true;
+        const _msgId = activeInviteMsgId;
+        activeInviteMsgId = null;
         const DELETE_AFTER_MS = 30 * 60 * 1000;
-        db.collection('messages').doc(activeInviteMsgId).update({
+        db.collection('messages').doc(_msgId).update({
           gameEnded:  true,
           deleteAt:   Date.now() + DELETE_AFTER_MS,
         }).catch(e => console.warn('[game] end message update failed:', e));
 
         // Schedule auto-delete after 30 min
         setTimeout(() => {
-          db.collection('messages').doc(activeInviteMsgId).delete().catch(() => {});
-          activeInviteMsgId = null;
+          db.collection('messages').doc(_msgId).delete().catch(() => {});
         }, DELETE_AFTER_MS);
       }
     }
@@ -10213,7 +10441,22 @@
         GAMES_REF().doc(activeGameId).update({
           [`players.${auth.currentUser.uid}`]: firebase.firestore.FieldValue.delete()
         }).catch(()=>{});
-        if (isGameHost) GAMES_REF().doc(activeGameId).update({state:'ended'}).catch(()=>{});
+        if (isGameHost) {
+          GAMES_REF().doc(activeGameId).update({state:'ended'}).catch(()=>{});
+          // Mark the invite message as ended so all clients show "THIS GAME HAS ENDED"
+          if (activeInviteMsgId) {
+            const _msgId = activeInviteMsgId;
+            activeInviteMsgId = null;
+            const DELETE_AFTER_MS = 30 * 60 * 1000;
+            db.collection('messages').doc(_msgId).update({
+              gameEnded: true,
+              deleteAt:  Date.now() + DELETE_AFTER_MS,
+            }).catch(e => console.warn('[game] leave end-msg update failed:', e));
+            setTimeout(() => {
+              db.collection('messages').doc(_msgId).delete().catch(() => {});
+            }, DELETE_AFTER_MS);
+          }
+        }
       }
       // Destroy YT player if active
       destroyYouTubeWatcher();
