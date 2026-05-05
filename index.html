@@ -3741,11 +3741,17 @@
     /* ── YouTube Watch Together ──────────────────────────────────────────── */
     .yt-watch-overlay {
       position: absolute; inset: 0;
-      display: flex; flex-direction: column;
+      display: flex; flex-direction: row;
       background: #000; z-index: 10;
     }
+
+    /* ── Left: player column ── */
+    .yt-player-col {
+      flex: 1; min-width: 0; display: flex; flex-direction: column;
+      border-right: 1px solid rgba(255,255,255,0.07);
+    }
     .yt-url-bar {
-      display: flex; gap: 8px; padding: 10px 12px;
+      display: flex; gap: 8px; padding: 10px 12px; align-items: center;
       background: rgba(0,0,0,0.85); border-bottom: 1px solid rgba(255,255,255,0.08);
       flex-shrink: 0;
     }
@@ -3756,30 +3762,44 @@
       font-size: 13px; outline: none;
     }
     .yt-url-input:focus { border-color: #ff4444; }
+    .yt-url-input:disabled { opacity: 0.45; cursor: default; }
     .yt-url-btn {
       padding: 7px 16px; border-radius: 8px; border: none;
       background: #ff4444; color: #fff; font-weight: 700;
       cursor: pointer; font-size: 13px; flex-shrink: 0;
     }
-    .yt-url-btn:hover { background: #ff2222; }
+    .yt-url-btn:hover:not(:disabled) { background: #ff2222; }
+    .yt-url-btn:disabled { opacity: 0.45; cursor: default; }
     .yt-player-wrap {
       flex: 1; min-height: 0; display: flex;
-      align-items: center; justify-content: center;
-      background: #000; overflow: hidden;
+      align-items: stretch; justify-content: stretch;
+      background: #000; overflow: hidden; position: relative;
     }
+    .yt-player-placeholder {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 14px; color: rgba(255,255,255,0.25);
+    }
+    .yt-player-placeholder.hidden { display: none; }
+    .yt-placeholder-icon {
+      font-size: 52px; opacity: 0.18; line-height: 1;
+    }
+    .yt-placeholder-text { font-size: 13px; }
     .yt-player-wrap iframe { width: 100%; height: 100%; border: none; }
     #ytPlayerEl { width: 100%; height: 100%; }
     .yt-controls {
       display: flex; align-items: center; gap: 10px;
-      padding: 8px 12px; background: rgba(0,0,0,0.9);
+      padding: 8px 12px; background: rgba(0,0,0,0.92);
       border-top: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;
     }
     .yt-ctrl-btn {
       background: rgba(255,255,255,0.1); border: none;
       color: #fff; border-radius: 6px; padding: 5px 10px;
       cursor: pointer; font-size: 14px; flex-shrink: 0;
+      transition: background 120ms;
     }
     .yt-ctrl-btn:hover { background: rgba(255,255,255,0.2); }
+    .yt-ctrl-btn:disabled { opacity: 0.35; cursor: default; }
     .yt-ctrl-time, .yt-ctrl-dur {
       color: rgba(255,255,255,0.6); font-size: 11px;
       font-variant-numeric: tabular-nums; flex-shrink: 0;
@@ -3787,10 +3807,87 @@
     .yt-ctrl-seek {
       flex: 1; accent-color: #ff4444; cursor: pointer; height: 4px;
     }
+    .yt-ctrl-seek:disabled { opacity: 0.35; cursor: default; }
     .yt-host-badge {
       font-size: 10px; color: #ff4444; font-weight: 700;
       letter-spacing: 0.05em; flex-shrink: 0;
     }
+
+    /* ── Right: queue / recommendations column ── */
+    .yt-queue-col {
+      width: 240px; flex-shrink: 0; display: flex; flex-direction: column;
+      background: #0a0a0a;
+    }
+    .yt-queue-header {
+      padding: 12px 14px 10px; border-bottom: 1px solid rgba(255,255,255,0.07);
+      flex-shrink: 0;
+    }
+    .yt-queue-title { font-size: 13px; font-weight: 700; color: #fff; display: block; }
+    .yt-queue-sub   { font-size: 11px; color: rgba(255,255,255,0.38); display: block; margin-top: 2px; }
+    .yt-queue-list  {
+      flex: 1; overflow-y: auto; padding: 8px 10px; display: flex;
+      flex-direction: column; gap: 6px; min-height: 0;
+    }
+    .yt-queue-empty {
+      font-size: 12px; color: rgba(255,255,255,0.28); text-align: center;
+      margin-top: 24px; line-height: 1.6;
+    }
+    .yt-queue-item {
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px;
+      animation: fadeIn 150ms ease-out;
+    }
+    .yt-queue-item-top {
+      display: flex; align-items: flex-start; gap: 8px;
+    }
+    .yt-queue-thumb {
+      width: 60px; height: 34px; border-radius: 4px; object-fit: cover;
+      background: rgba(255,255,255,0.08); flex-shrink: 0;
+    }
+    .yt-queue-info { flex: 1; min-width: 0; }
+    .yt-queue-item-title {
+      font-size: 11px; font-weight: 600; color: #fff;
+      line-height: 1.35; display: -webkit-box;
+      -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .yt-queue-item-who {
+      font-size: 10px; color: rgba(255,255,255,0.38); margin-top: 2px;
+    }
+    .yt-queue-item-actions { display: flex; gap: 6px; margin-top: 2px; }
+    .yt-queue-play-btn {
+      flex: 1; padding: 4px 8px; border-radius: 6px; border: none;
+      background: #ff4444; color: #fff; font-size: 11px; font-weight: 700;
+      cursor: pointer; transition: background 120ms;
+    }
+    .yt-queue-play-btn:hover { background: #ff2222; }
+    .yt-queue-play-btn.yt-queue-play-btn--guest {
+      background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); cursor: default;
+    }
+    .yt-queue-remove-btn {
+      padding: 4px 8px; border-radius: 6px; border: none;
+      background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.45);
+      font-size: 11px; cursor: pointer; transition: background 120ms;
+    }
+    .yt-queue-remove-btn:hover { background: rgba(239,68,68,0.25); color: #f87171; }
+    .yt-queue-input-row {
+      display: flex; gap: 6px; padding: 10px;
+      border-top: 1px solid rgba(255,255,255,0.07); flex-shrink: 0;
+    }
+    .yt-queue-input {
+      flex: 1; padding: 7px 10px; border-radius: 8px; min-width: 0;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06); color: #fff;
+      font-size: 12px; outline: none;
+    }
+    .yt-queue-input:focus { border-color: rgba(255,68,68,0.6); }
+    .yt-queue-input::placeholder { color: rgba(255,255,255,0.28); }
+    .yt-queue-submit {
+      padding: 7px 12px; border-radius: 8px; border: none;
+      background: rgba(255,68,68,0.8); color: #fff; font-size: 16px; font-weight: 700;
+      cursor: pointer; flex-shrink: 0; line-height: 1;
+      transition: background 120ms;
+    }
+    .yt-queue-submit:hover { background: #ff4444; }
 
     /* Game ended notice — replaces invite card in the same bubble */
     .game-ended-notice {
@@ -4469,19 +4566,40 @@
       </div>
       <!-- YouTube Watch Together -->
       <div class="yt-watch-overlay" id="ytWatchOverlay" style="display:none;">
-        <div class="yt-url-bar" id="ytUrlBar">
-          <input class="yt-url-input" id="ytUrlInput" type="text" placeholder="Paste a YouTube URL or video ID…" />
-          <button class="yt-url-btn" id="ytUrlBtn">▶ Load</button>
+        <!-- Left: player column -->
+        <div class="yt-player-col">
+          <div class="yt-url-bar" id="ytUrlBar">
+            <input class="yt-url-input" id="ytUrlInput" type="text" placeholder="Paste a YouTube URL or video ID…" />
+            <button class="yt-url-btn" id="ytUrlBtn">▶ Load</button>
+          </div>
+          <div class="yt-player-wrap" id="ytPlayerWrap">
+            <div class="yt-player-placeholder" id="ytPlayerPlaceholder">
+              <div class="yt-placeholder-icon">▶</div>
+              <div class="yt-placeholder-text">Waiting for host to load a video…</div>
+            </div>
+            <div id="ytPlayerEl"></div>
+          </div>
+          <div class="yt-controls" id="ytControls" style="display:none;">
+            <button class="yt-ctrl-btn" id="ytPlayPause">▶</button>
+            <span class="yt-ctrl-time" id="ytTimeDisplay">0:00</span>
+            <input class="yt-ctrl-seek" id="ytSeekBar" type="range" min="0" max="100" value="0" step="0.1" />
+            <span class="yt-ctrl-dur" id="ytDuration">0:00</span>
+            <button class="yt-ctrl-btn" id="ytSync" title="Re-sync to host">⟳</button>
+          </div>
         </div>
-        <div class="yt-player-wrap" id="ytPlayerWrap">
-          <div id="ytPlayerEl"></div>
-        </div>
-        <div class="yt-controls" id="ytControls" style="display:none;">
-          <button class="yt-ctrl-btn" id="ytPlayPause">⏸</button>
-          <span class="yt-ctrl-time" id="ytTimeDisplay">0:00</span>
-          <input class="yt-ctrl-seek" id="ytSeekBar" type="range" min="0" max="100" value="0" step="0.1" />
-          <span class="yt-ctrl-dur" id="ytDuration">0:00</span>
-          <button class="yt-ctrl-btn" id="ytSync">⟳ Sync</button>
+        <!-- Right: queue / recommendations column -->
+        <div class="yt-queue-col">
+          <div class="yt-queue-header">
+            <span class="yt-queue-title">📋 Queue</span>
+            <span class="yt-queue-sub" id="ytQueueSub">Suggest a video below</span>
+          </div>
+          <div class="yt-queue-list" id="ytQueueList">
+            <div class="yt-queue-empty" id="ytQueueEmpty">No suggestions yet.<br>Be the first!</div>
+          </div>
+          <div class="yt-queue-input-row">
+            <input class="yt-queue-input" id="ytQueueInput" type="text" placeholder="Paste YouTube URL to suggest…" />
+            <button class="yt-queue-submit" id="ytQueueSubmit">＋</button>
+          </div>
         </div>
       </div>
       <canvas id="gameCanvas"></canvas>
@@ -10115,44 +10233,51 @@
     // YOUTUBE WATCH TOGETHER
     // ════════════════════════════════════════════════════════════════════════
     // Architecture:
-    //  • Host controls playback (play/pause/seek). Their player state is written
-    //    to Firestore every 2s and on every explicit action.
+    //  • Host controls playback (play/pause/seek/load). Their player state is
+    //    written to Firestore every 2s and on every explicit action.
     //  • Non-host clients read the Firestore doc and sync their local YT player
     //    to match, compensating for travel time so everyone is in sync.
+    //  • Anyone can add suggestions to gameData.ytQueue (array of {videoId,
+    //    title, suggestedBy, suggestedAt}). Host can press Play on any item.
     //  • The YouTube IFrame API is loaded lazily on first use.
+    // ════════════════════════════════════════════════════════════════════════
 
-    const ytWatchOverlay = document.getElementById('ytWatchOverlay');
-    const ytUrlInput     = document.getElementById('ytUrlInput');
-    const ytUrlBtn       = document.getElementById('ytUrlBtn');
-    const ytPlayerWrap   = document.getElementById('ytPlayerWrap');
-    const ytControls     = document.getElementById('ytControls');
-    const ytPlayPause    = document.getElementById('ytPlayPause');
-    const ytTimeDisplay  = document.getElementById('ytTimeDisplay');
-    const ytSeekBar      = document.getElementById('ytSeekBar');
-    const ytDuration     = document.getElementById('ytDuration');
-    const ytSyncBtn      = document.getElementById('ytSync');
+    const ytWatchOverlay   = document.getElementById('ytWatchOverlay');
+    const ytUrlInput       = document.getElementById('ytUrlInput');
+    const ytUrlBtn         = document.getElementById('ytUrlBtn');
+    const ytPlayerWrap     = document.getElementById('ytPlayerWrap');
+    const ytPlayerPlaceholder = document.getElementById('ytPlayerPlaceholder');
+    const ytControls       = document.getElementById('ytControls');
+    const ytPlayPause      = document.getElementById('ytPlayPause');
+    const ytTimeDisplay    = document.getElementById('ytTimeDisplay');
+    const ytSeekBar        = document.getElementById('ytSeekBar');
+    const ytDuration       = document.getElementById('ytDuration');
+    const ytSyncBtn        = document.getElementById('ytSync');
+    const ytQueueList      = document.getElementById('ytQueueList');
+    const ytQueueEmpty     = document.getElementById('ytQueueEmpty');
+    const ytQueueInput     = document.getElementById('ytQueueInput');
+    const ytQueueSubmit    = document.getElementById('ytQueueSubmit');
+    const ytQueueSub       = document.getElementById('ytQueueSub');
 
     let _ytPlayer        = null;   // YT.Player instance
     let _ytGameId        = null;   // current watch-together game doc ID
-    let _ytUnsub         = null;   // Firestore listener unsub
+    let _ytUnsub         = null;   // Firestore game doc listener unsub
     let _ytWriteTimer    = null;   // host periodic write interval
     let _ytSeekDragging  = false;  // user is dragging seek bar
     let _ytIgnoreSync    = false;  // brief window after host action to ignore remote sync
     let _ytApiReady      = false;  // YT IFrame API loaded
+    let _ytTickerInited  = false;  // seek bar ticker started once
 
-    // Extract video ID from URL or bare ID
+    // ── Helpers ─────────────────────────────────────────────────────────────
+
     function ytExtractId(raw) {
-      raw = raw.trim();
-      // youtu.be/<id>
+      raw = (raw || '').trim();
       let m = raw.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
       if (m) return m[1];
-      // ?v=<id>
       m = raw.match(/[?&]v=([A-Za-z0-9_-]{11})/);
       if (m) return m[1];
-      // /embed/<id>
       m = raw.match(/\/embed\/([A-Za-z0-9_-]{11})/);
       if (m) return m[1];
-      // bare 11-char ID
       if (/^[A-Za-z0-9_-]{11}$/.test(raw)) return raw;
       return null;
     }
@@ -10164,19 +10289,25 @@
       return `${m}:${ss}`;
     }
 
-    // Load YT IFrame API lazily
+    // ── IFrame API loader ────────────────────────────────────────────────────
+
     function loadYTApi() {
       return new Promise(resolve => {
         if (_ytApiReady && window.YT?.Player) { resolve(); return; }
         if (window.YT?.Player) { _ytApiReady = true; resolve(); return; }
-        // API already loading (e.g. script tag added earlier)
         if (document.getElementById('yt-iframe-api')) {
           const poll = setInterval(() => {
             if (window.YT?.Player) { _ytApiReady = true; clearInterval(poll); resolve(); }
           }, 100);
           return;
         }
-        window.onYouTubeIframeAPIReady = () => { _ytApiReady = true; resolve(); };
+        // Store any existing callback so we don't clobber it
+        const prev = window.onYouTubeIframeAPIReady;
+        window.onYouTubeIframeAPIReady = () => {
+          _ytApiReady = true;
+          if (typeof prev === 'function') prev();
+          resolve();
+        };
         const s = document.createElement('script');
         s.id  = 'yt-iframe-api';
         s.src = 'https://www.youtube.com/iframe_api';
@@ -10184,10 +10315,18 @@
       });
     }
 
-    // Create or load a new video into the player
+    // ── Player creation / video loading ──────────────────────────────────────
+
     async function ytLoadVideo(videoId) {
       await loadYTApi();
+
+      // Hide placeholder once a video is actually loading
+      if (ytPlayerPlaceholder) ytPlayerPlaceholder.classList.add('hidden');
       ytControls.style.display = 'flex';
+
+      // Disable controls for non-host
+      const hostOnly = [ytPlayPause, ytSeekBar];
+      hostOnly.forEach(el => { if (el) el.disabled = !isGameHost; });
 
       if (_ytPlayer) {
         _ytPlayer.loadVideoById(videoId);
@@ -10195,19 +10334,20 @@
         return;
       }
 
-      // First time — create the player
+      // First time — create the iframe player inside #ytPlayerEl
       const container = document.createElement('div');
       container.id = 'ytPlayerInner';
-      document.getElementById('ytPlayerEl').innerHTML = '';
-      document.getElementById('ytPlayerEl').appendChild(container);
+      const elRoot = document.getElementById('ytPlayerEl');
+      elRoot.innerHTML = '';
+      elRoot.appendChild(container);
 
       _ytPlayer = new YT.Player('ytPlayerInner', {
-        width: '100%',
+        width:  '100%',
         height: '100%',
         videoId,
         playerVars: {
           autoplay:       isGameHost ? 1 : 0,
-          controls:       isGameHost ? 1 : 0, // host uses native controls + ours; guests use only ours
+          controls:       0,   // we provide our own controls bar
           disablekb:      isGameHost ? 0 : 1,
           rel:            0,
           modestbranding: 1,
@@ -10215,94 +10355,209 @@
         },
         events: {
           onReady: e => {
-            if (isGameHost) { e.target.playVideo(); ytPushState(); }
+            if (isGameHost) {
+              e.target.playVideo();
+              ytPushState();
+            }
           },
-          onStateChange: e => {
-            if (!isGameHost) return; // non-host never drives state
-            // Push state on every host state change immediately
-            clearTimeout(_ytIgnoreSync);
+          onStateChange: () => {
+            if (!isGameHost) return;
             _ytIgnoreSync = true;
-            setTimeout(() => { _ytIgnoreSync = false; }, 1500);
+            clearTimeout(window._ytIgnoreTimer);
+            window._ytIgnoreTimer = setTimeout(() => { _ytIgnoreSync = false; }, 1500);
             ytPushState();
             ytUpdateControls();
           },
         },
       });
 
-      // Ticker to update seek bar + time display
-      setInterval(() => {
-        if (!_ytPlayer?.getCurrentTime) return;
-        const t = _ytPlayer.getCurrentTime() || 0;
-        const d = _ytPlayer.getDuration()    || 0;
-        ytTimeDisplay.textContent = ytFmtTime(t);
-        ytDuration.textContent    = ytFmtTime(d);
-        if (!_ytSeekDragging && d > 0) ytSeekBar.value = (t / d) * 100;
-        ytUpdateControls();
-      }, 500);
+      // Start a single shared ticker for seek bar + time display
+      if (!_ytTickerInited) {
+        _ytTickerInited = true;
+        setInterval(() => {
+          if (!_ytPlayer?.getCurrentTime) return;
+          const t = _ytPlayer.getCurrentTime() || 0;
+          const d = _ytPlayer.getDuration()    || 0;
+          ytTimeDisplay.textContent = ytFmtTime(t);
+          ytDuration.textContent    = ytFmtTime(d);
+          if (!_ytSeekDragging && d > 0) ytSeekBar.value = (t / d) * 100;
+          ytUpdateControls();
+        }, 500);
+      }
     }
 
     function ytUpdateControls() {
       if (!_ytPlayer?.getPlayerState) return;
+      if (typeof YT === 'undefined') return;
       const state = _ytPlayer.getPlayerState();
       ytPlayPause.textContent = state === YT.PlayerState.PLAYING ? '⏸' : '▶';
     }
 
-    // Host: write current player state to Firestore
-    function ytPushState(force = false) {
+    // ── Host → Firestore sync ─────────────────────────────────────────────────
+
+    function ytPushState() {
       if (!isGameHost || !_ytPlayer?.getCurrentTime || !_ytGameId) return;
-      const state = _ytPlayer.getPlayerState();
-      const playing = state === YT.PlayerState.PLAYING;
+      const state   = _ytPlayer.getPlayerState();
+      const playing = (typeof YT !== 'undefined') && state === YT.PlayerState.PLAYING;
       GAMES_REF().doc(_ytGameId).update({
         'gameData.ytState': {
-          videoId:    _ytPlayer.getVideoData()?.video_id || '',
+          videoId:    _ytPlayer.getVideoData?.()?.video_id || '',
           t:          _ytPlayer.getCurrentTime() || 0,
           playing,
-          serverTime: Date.now(), // used by clients to compensate for travel time
+          serverTime: Date.now(),
         }
       }).catch(() => {});
     }
 
-    // Non-host: apply server state to local player
+    // ── Non-host: apply incoming state ────────────────────────────────────────
+
     function ytApplyState(ytState) {
       if (!_ytPlayer?.seekTo || isGameHost || _ytIgnoreSync) return;
       if (!ytState?.videoId) return;
 
-      // Load video if different
       const currentId = _ytPlayer.getVideoData?.()?.video_id;
       if (currentId !== ytState.videoId) {
         _ytPlayer.loadVideoById(ytState.videoId);
         _ytPlayer.pauseVideo();
       }
 
-      // Compensate for network travel time
-      const travelMs    = Math.min(2000, Date.now() - (ytState.serverTime || Date.now()));
-      const targetTime  = ytState.t + (ytState.playing ? travelMs / 1000 : 0);
-      const currentTime = _ytPlayer.getCurrentTime() || 0;
-      const drift       = Math.abs(currentTime - targetTime);
+      const travelMs   = Math.min(2000, Date.now() - (ytState.serverTime || Date.now()));
+      const targetTime = ytState.t + (ytState.playing ? travelMs / 1000 : 0);
+      const drift      = Math.abs((_ytPlayer.getCurrentTime() || 0) - targetTime);
 
-      // Only seek if drift > 1.5 seconds to avoid constant micro-seeks
-      if (drift > 1.5) {
-        _ytPlayer.seekTo(targetTime, true);
-      }
+      if (drift > 1.5) _ytPlayer.seekTo(targetTime, true);
 
-      if (ytState.playing) {
-        _ytPlayer.playVideo();
-      } else {
-        _ytPlayer.pauseVideo();
-      }
+      if (ytState.playing) _ytPlayer.playVideo();
+      else _ytPlayer.pauseVideo();
 
       ytUpdateControls();
     }
 
+    // ── Queue rendering ───────────────────────────────────────────────────────
+
+    function ytRenderQueue(queue) {
+      // Remove all items except the empty-state div
+      [...ytQueueList.children].forEach(el => {
+        if (el !== ytQueueEmpty) el.remove();
+      });
+
+      if (!queue || queue.length === 0) {
+        ytQueueEmpty.style.display = '';
+        ytQueueSub.textContent = 'Suggest a video below';
+        return;
+      }
+
+      ytQueueEmpty.style.display = 'none';
+      ytQueueSub.textContent = `${queue.length} suggestion${queue.length !== 1 ? 's' : ''}`;
+
+      queue.forEach((item, idx) => {
+        const el = document.createElement('div');
+        el.className = 'yt-queue-item';
+
+        const thumbSrc = `https://i.ytimg.com/vi/${item.videoId}/mqdefault.jpg`;
+        const who = item.suggestedBy || 'Someone';
+
+        el.innerHTML = `
+          <div class="yt-queue-item-top">
+            <img class="yt-queue-thumb" src="${thumbSrc}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+            <div class="yt-queue-info">
+              <div class="yt-queue-item-title">${item.title || item.videoId}</div>
+              <div class="yt-queue-item-who">by ${who}</div>
+            </div>
+          </div>
+          <div class="yt-queue-item-actions">
+            <button class="yt-queue-play-btn${isGameHost ? '' : ' yt-queue-play-btn--guest'}"
+              ${isGameHost ? '' : 'disabled'} data-videoid="${item.videoId}" data-idx="${idx}">
+              ${isGameHost ? '▶ Play now' : '▶ Host plays'}
+            </button>
+            <button class="yt-queue-remove-btn" data-idx="${idx}" title="Remove">✕</button>
+          </div>`;
+
+        // Play button (host only)
+        el.querySelector('.yt-queue-play-btn').addEventListener('click', async () => {
+          if (!isGameHost) return;
+          await ytLoadVideo(item.videoId);
+          ytPushState();
+          // Optionally remove from queue after playing
+          ytRemoveFromQueue(idx);
+        });
+
+        // Remove button (anyone can remove their own; host can remove any)
+        const removeBtn = el.querySelector('.yt-queue-remove-btn');
+        const myName = auth.currentUser
+          ? (userCache[auth.currentUser.uid]?.displayName || auth.currentUser.email)
+          : null;
+        const canRemove = isGameHost || item.suggestedBy === myName;
+        if (!canRemove) removeBtn.style.display = 'none';
+        removeBtn.addEventListener('click', () => ytRemoveFromQueue(idx));
+
+        ytQueueList.appendChild(el);
+      });
+    }
+
+    function ytRemoveFromQueue(idx) {
+      if (!_ytGameId) return;
+      GAMES_REF().doc(_ytGameId).get().then(snap => {
+        if (!snap.exists) return;
+        const queue = [...(snap.data()?.gameData?.ytQueue || [])];
+        queue.splice(idx, 1);
+        GAMES_REF().doc(_ytGameId).update({ 'gameData.ytQueue': queue }).catch(() => {});
+      });
+    }
+
+    // ── Queue — submit suggestion ─────────────────────────────────────────────
+
+    async function ytSubmitSuggestion() {
+      if (!_ytGameId || !auth.currentUser) return;
+      const raw = ytQueueInput.value.trim();
+      const videoId = ytExtractId(raw);
+      if (!videoId) {
+        ytQueueInput.style.borderColor = '#f87171';
+        setTimeout(() => { ytQueueInput.style.borderColor = ''; }, 1500);
+        return;
+      }
+
+      ytQueueSubmit.disabled = true;
+
+      // Fetch title from oEmbed (best-effort, no API key needed)
+      let title = videoId;
+      try {
+        const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+        if (res.ok) {
+          const data = await res.json();
+          title = data.title || videoId;
+        }
+      } catch(e) { /* title stays as videoId */ }
+
+      const myName = userCache[auth.currentUser.uid]?.displayName
+        || auth.currentUser.email
+        || 'Someone';
+
+      const newItem = { videoId, title, suggestedBy: myName, suggestedAt: Date.now() };
+
+      GAMES_REF().doc(_ytGameId).get().then(snap => {
+        if (!snap.exists) return;
+        const queue = [...(snap.data()?.gameData?.ytQueue || []), newItem];
+        GAMES_REF().doc(_ytGameId).update({ 'gameData.ytQueue': queue })
+          .then(() => { ytQueueInput.value = ''; })
+          .catch(() => {})
+          .finally(() => { ytQueueSubmit.disabled = false; });
+      }).catch(() => { ytQueueSubmit.disabled = false; });
+    }
+
+    ytQueueSubmit.addEventListener('click', ytSubmitSuggestion);
+    ytQueueInput.addEventListener('keydown', e => { if (e.key === 'Enter') ytSubmitSuggestion(); });
+
+    // ── initYouTubeWatcher ────────────────────────────────────────────────────
+
     function initYouTubeWatcher(gameId) {
       _ytGameId = gameId;
 
-      // Show host badge / hide controls for non-host
+      // Host: show URL bar enabled; non-host: disable it and show LIVE SYNC badge
       if (!isGameHost) {
-        ytUrlInput.disabled      = true;
-        ytUrlBtn.disabled        = true;
-        ytUrlInput.placeholder   = 'Waiting for host to load a video…';
-        // Add a subtle host label
+        ytUrlInput.disabled    = true;
+        ytUrlBtn.disabled      = true;
+        ytUrlInput.placeholder = 'Host controls playback…';
         if (!document.getElementById('ytHostBadge')) {
           const badge = document.createElement('span');
           badge.id        = 'ytHostBadge';
@@ -10310,94 +10565,120 @@
           badge.textContent = '● LIVE SYNC';
           document.querySelector('.yt-url-bar').appendChild(badge);
         }
+        // Non-host placeholder text
+        if (ytPlayerPlaceholder) {
+          ytPlayerPlaceholder.querySelector('.yt-placeholder-text').textContent =
+            'Waiting for host to load a video…';
+        }
+      } else {
+        if (ytPlayerPlaceholder) {
+          ytPlayerPlaceholder.querySelector('.yt-placeholder-text').textContent =
+            'Paste a YouTube URL above to start watching.';
+        }
       }
 
-      // Listen for state changes from host
+      // Single Firestore listener — handles both ytState AND ytQueue
+      if (_ytUnsub) _ytUnsub();
       _ytUnsub = GAMES_REF().doc(gameId).onSnapshot(snap => {
         if (!snap.exists) return;
-        const ytState = snap.data()?.gameData?.ytState;
-        if (!ytState) return;
+        const gd = snap.data()?.gameData || {};
 
-        // Non-host: sync to host state
-        if (!isGameHost) {
-          if (!_ytPlayer && ytState.videoId) {
-            ytLoadVideo(ytState.videoId).then(() => ytApplyState(ytState));
-          } else {
-            ytApplyState(ytState);
+        // Sync playback state
+        const ytState = gd.ytState;
+        if (ytState?.videoId) {
+          if (!isGameHost) {
+            if (!_ytPlayer) {
+              ytLoadVideo(ytState.videoId).then(() => ytApplyState(ytState));
+            } else {
+              ytApplyState(ytState);
+            }
           }
-        }
-
-        // Everyone: update URL bar to show current video
-        if (ytState.videoId) {
+          // Update URL bar for everyone
           ytUrlInput.value = `https://youtube.com/watch?v=${ytState.videoId}`;
         }
-      });
 
-      // Host: periodic state push every 2s to keep clients in sync
+        // Render queue
+        ytRenderQueue(gd.ytQueue || []);
+      }, e => console.warn('[yt] snapshot error:', e));
+
+      // Host: periodic state push every 2s
       if (isGameHost) {
         _ytWriteTimer = setInterval(() => ytPushState(), 2000);
       }
     }
 
+    // ── destroyYouTubeWatcher ─────────────────────────────────────────────────
+
     function destroyYouTubeWatcher() {
-      if (_ytUnsub)  { _ytUnsub(); _ytUnsub = null; }
+      if (_ytUnsub)      { _ytUnsub(); _ytUnsub = null; }
       if (_ytWriteTimer) { clearInterval(_ytWriteTimer); _ytWriteTimer = null; }
-      if (_ytPlayer) {
-        try { _ytPlayer.destroy(); } catch(e) {}
-        _ytPlayer = null;
-      }
-      _ytGameId = null;
-      _ytApiReady = false;
+      if (_ytPlayer)     { try { _ytPlayer.destroy(); } catch(e) {} _ytPlayer = null; }
+      _ytGameId       = null;
+      _ytApiReady     = false;
+      _ytTickerInited = false;
+      _ytIgnoreSync   = false;
+      _ytSeekDragging = false;
       // Reset URL bar
-      ytUrlInput.disabled     = false;
-      ytUrlBtn.disabled       = false;
-      ytUrlInput.value        = '';
-      ytUrlInput.placeholder  = 'Paste a YouTube URL or video ID…';
+      ytUrlInput.disabled    = false;
+      ytUrlBtn.disabled      = false;
+      ytUrlInput.value       = '';
+      ytUrlInput.placeholder = 'Paste a YouTube URL or video ID…';
       ytControls.style.display = 'none';
+      if (ytPlayerPlaceholder) ytPlayerPlaceholder.classList.remove('hidden');
+      // Reset queue
+      ytQueueInput.value = '';
+      ytRenderQueue([]);
       const badge = document.getElementById('ytHostBadge');
       if (badge) badge.remove();
     }
 
-    // Host loads a video via URL bar
+    // ── Host URL bar ──────────────────────────────────────────────────────────
+
     ytUrlBtn.addEventListener('click', async () => {
       if (!isGameHost) return;
       const vid = ytExtractId(ytUrlInput.value);
-      if (!vid) { ytUrlInput.style.borderColor = '#f87171'; setTimeout(() => { ytUrlInput.style.borderColor = ''; }, 1500); return; }
+      if (!vid) {
+        ytUrlInput.style.borderColor = '#f87171';
+        setTimeout(() => { ytUrlInput.style.borderColor = ''; }, 1500);
+        return;
+      }
       await ytLoadVideo(vid);
-      ytPushState(true);
+      ytPushState();
     });
     ytUrlInput.addEventListener('keydown', e => {
       if (e.key === 'Enter') ytUrlBtn.click();
     });
 
-    // Host play/pause button
+    // ── Host play/pause ───────────────────────────────────────────────────────
+
     ytPlayPause.addEventListener('click', () => {
       if (!_ytPlayer || !isGameHost) return;
+      if (typeof YT === 'undefined') return;
       const state = _ytPlayer.getPlayerState();
-      if (state === YT.PlayerState.PLAYING) { _ytPlayer.pauseVideo(); }
-      else { _ytPlayer.playVideo(); }
-      setTimeout(() => ytPushState(true), 100);
+      if (state === YT.PlayerState.PLAYING) _ytPlayer.pauseVideo();
+      else _ytPlayer.playVideo();
+      setTimeout(() => ytPushState(), 100);
     });
 
-    // Seek bar drag (host only)
+    // ── Seek bar (host only) ──────────────────────────────────────────────────
+
     ytSeekBar.addEventListener('mousedown',  () => { _ytSeekDragging = true; });
     ytSeekBar.addEventListener('touchstart', () => { _ytSeekDragging = true; }, { passive: true });
     ytSeekBar.addEventListener('input', () => {
       if (!_ytPlayer || !isGameHost) return;
       const d = _ytPlayer.getDuration() || 0;
-      const t = (ytSeekBar.value / 100) * d;
-      ytTimeDisplay.textContent = ytFmtTime(t);
+      ytTimeDisplay.textContent = ytFmtTime((ytSeekBar.value / 100) * d);
     });
     ytSeekBar.addEventListener('change', () => {
       _ytSeekDragging = false;
       if (!_ytPlayer || !isGameHost) return;
       const d = _ytPlayer.getDuration() || 0;
-      const t = (ytSeekBar.value / 100) * d;
-      _ytPlayer.seekTo(t, true);
-      setTimeout(() => ytPushState(true), 150);
+      _ytPlayer.seekTo((ytSeekBar.value / 100) * d, true);
+      setTimeout(() => ytPushState(), 150);
     });
 
-    // Manual sync button (non-host can force re-sync)
+    // ── Manual re-sync (non-host) ─────────────────────────────────────────────
+
     ytSyncBtn.addEventListener('click', () => {
       _ytIgnoreSync = false;
       if (!_ytGameId) return;
