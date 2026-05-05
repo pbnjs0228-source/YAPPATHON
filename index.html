@@ -4463,13 +4463,60 @@
       gap: 0 !important;
     }
 
-    /* Discord-style thin scrollbar */
-    .messages::-webkit-scrollbar { width: 4px; }
-    .messages::-webkit-scrollbar-track { background: transparent; }
-    .messages::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
-    .sidebar-column::-webkit-scrollbar { width: 3px; }
-    .sidebar-column::-webkit-scrollbar-track { background: transparent; }
-    .sidebar-column::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+    /* ── Themed scrollbars ── */
+    :root {
+      --scroll-thumb: rgba(148,163,184,0.30);
+      --scroll-thumb-hover: rgba(148,163,184,0.55);
+      --scroll-track: transparent;
+    }
+    body.theme-dark   { --scroll-thumb: rgba(99,120,180,0.30); --scroll-thumb-hover: rgba(99,120,180,0.55); }
+    body.theme-blue   { --scroll-thumb: rgba(59,130,246,0.28); --scroll-thumb-hover: rgba(59,130,246,0.50); }
+    body.theme-purple { --scroll-thumb: rgba(168,85,247,0.28); --scroll-thumb-hover: rgba(168,85,247,0.50); }
+    body.theme-red    { --scroll-thumb: rgba(239,68,68,0.28);  --scroll-thumb-hover: rgba(239,68,68,0.50); }
+    body.theme-light  { --scroll-thumb: rgba(80,80,120,0.20);  --scroll-thumb-hover: rgba(80,80,120,0.40); }
+
+    .messages,
+    .sidebar-column,
+    .sidebar-body,
+    .admin-panel-list,
+    .modal,
+    .changelog-list {
+      scrollbar-width: thin;
+      scrollbar-color: var(--scroll-thumb) var(--scroll-track);
+    }
+    .messages::-webkit-scrollbar,
+    .sidebar-column::-webkit-scrollbar,
+    .sidebar-body::-webkit-scrollbar,
+    .admin-panel-list::-webkit-scrollbar,
+    .modal::-webkit-scrollbar { width: 5px; height: 5px; }
+
+    .messages::-webkit-scrollbar-track,
+    .sidebar-column::-webkit-scrollbar-track,
+    .sidebar-body::-webkit-scrollbar-track,
+    .admin-panel-list::-webkit-scrollbar-track,
+    .modal::-webkit-scrollbar-track {
+      background: transparent;
+      border-radius: 10px;
+    }
+    .messages::-webkit-scrollbar-thumb,
+    .sidebar-column::-webkit-scrollbar-thumb,
+    .sidebar-body::-webkit-scrollbar-thumb,
+    .admin-panel-list::-webkit-scrollbar-thumb,
+    .modal::-webkit-scrollbar-thumb {
+      background: var(--scroll-thumb);
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background-clip: padding-box;
+      transition: background 200ms;
+    }
+    .messages::-webkit-scrollbar-thumb:hover,
+    .sidebar-column::-webkit-scrollbar-thumb:hover,
+    .sidebar-body::-webkit-scrollbar-thumb:hover,
+    .admin-panel-list::-webkit-scrollbar-thumb:hover,
+    .modal::-webkit-scrollbar-thumb:hover {
+      background: var(--scroll-thumb-hover);
+      background-clip: padding-box;
+    }
 
     /* ═══════════════════════════════
        MESSAGE BUBBLES
@@ -5584,20 +5631,20 @@
 
                     <div class="changelog-entry">
             <div class="changelog-version">
-              <span class="changelog-tag" style="background:linear-gradient"(135deg,#ff8a3d,#ffca69,#8aa9ff,#5b4bff);color:#050712;">v2.0</span>
-              <span class="changelog-date">May 6th, 2026</span>
-            </div>
-            <div class="changelog-title">v2.0 Release</div>
-            <div class="changelog-notes">There is now a NEW Glass UI, acitvities to play in Voice Chat, and YouTube Watch Together! Have fun with these new features!</div>
-          </div>
-
-                    <div class="changelog-entry">
-            <div class="changelog-version">
               <span class="changelog-tag" style="background:linear-gradient"(135deg,#ff8a3d,#ffca69,#8aa9ff,#5b4bff);color:#050712;">v1.0</span>
               <span class="changelog-date">April 28, 2026</span>
             </div>
             <div class="changelog-title">🎉 v1.0 Release</div>
             <div class="changelog-notes">ORBIT is officially 1.0! This release brings replies (tap ↩ on any message), @mention autocomplete with highlighting, image lightboxes (click any image to enlarge), voice chat improvements with reliable peer-to-peer audio and green speaking indicators, full mobile support, and dark Nebula Blue & Hydrogen Red themes.</div>
+          </div>
+
+          <div class="changelog-entry">
+            <div class="changelog-version">
+              <span class="changelog-tag">v0.11</span>
+              <span class="changelog-date">April 27, 2026</span>
+            </div>
+            <div class="changelog-title">Galaxy background & themes</div>
+            <div class="changelog-notes">Added an animated galaxy canvas with shooting stars, twinkling, and Milky Way nebula bands. Five themes: Void Darkness, Inversion White, Nebula Blue, Supernova Purple, and Hydrogen Red.</div>
           </div>
 
           <div class="changelog-entry">
@@ -6490,9 +6537,24 @@
       }
 
       const profile     = userCache[uid] || {};
-      const displayName = profile.displayName || "Unknown";
+      const displayName = profile.displayName || profile.email?.split('@')[0] || null;
       const photoData   = profile.photoData || null;
       const email       = profile.email || null;
+
+      // If we have no display name yet, fetch the user doc once and re-render
+      if (!displayName && uid && !userCache[uid]?._fetching) {
+        if (!userCache[uid]) userCache[uid] = {};
+        userCache[uid]._fetching = true;
+        db.collection('users').doc(uid).get().then(snap => {
+          if (snap.exists) {
+            userCache[uid] = { ...snap.data(), _fetching: false };
+          } else {
+            userCache[uid] = { displayName: email || 'User', _fetching: false };
+          }
+          // Re-render only the affected rows
+          if (lastMessageSnapshot) renderMessages(lastMessageSnapshot);
+        }).catch(() => { if (userCache[uid]) userCache[uid]._fetching = false; });
+      }
       const isSelf      = currentUser && uid === currentUser.uid;
 
       const row = document.createElement("div");
@@ -6532,7 +6594,7 @@
       const author = document.createElement("span");
       author.className = "message-author";
       const authorSpan = document.createElement("span");
-      authorSpan.textContent = isSelf ? "You" : displayName;
+      authorSpan.textContent = isSelf ? "You" : (displayName || email?.split('@')[0] || "…");
       author.appendChild(authorSpan);
       const isAdminEmailFlag = isAdminEmail(email);
       const isSuper = isSuperAdminEmail(email);
