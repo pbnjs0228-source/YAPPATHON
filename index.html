@@ -3738,6 +3738,60 @@
     .game-invite-join:active { transform: scale(0.96); }
     .game-invite-join:disabled { opacity: 0.5; cursor: default; }
 
+    /* ── YouTube Watch Together ──────────────────────────────────────────── */
+    .yt-watch-overlay {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      background: #000; z-index: 10;
+    }
+    .yt-url-bar {
+      display: flex; gap: 8px; padding: 10px 12px;
+      background: rgba(0,0,0,0.85); border-bottom: 1px solid rgba(255,255,255,0.08);
+      flex-shrink: 0;
+    }
+    .yt-url-input {
+      flex: 1; padding: 7px 12px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.07); color: #fff;
+      font-size: 13px; outline: none;
+    }
+    .yt-url-input:focus { border-color: #ff4444; }
+    .yt-url-btn {
+      padding: 7px 16px; border-radius: 8px; border: none;
+      background: #ff4444; color: #fff; font-weight: 700;
+      cursor: pointer; font-size: 13px; flex-shrink: 0;
+    }
+    .yt-url-btn:hover { background: #ff2222; }
+    .yt-player-wrap {
+      flex: 1; min-height: 0; display: flex;
+      align-items: center; justify-content: center;
+      background: #000; overflow: hidden;
+    }
+    .yt-player-wrap iframe { width: 100%; height: 100%; border: none; }
+    #ytPlayerEl { width: 100%; height: 100%; }
+    .yt-controls {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; background: rgba(0,0,0,0.9);
+      border-top: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;
+    }
+    .yt-ctrl-btn {
+      background: rgba(255,255,255,0.1); border: none;
+      color: #fff; border-radius: 6px; padding: 5px 10px;
+      cursor: pointer; font-size: 14px; flex-shrink: 0;
+    }
+    .yt-ctrl-btn:hover { background: rgba(255,255,255,0.2); }
+    .yt-ctrl-time, .yt-ctrl-dur {
+      color: rgba(255,255,255,0.6); font-size: 11px;
+      font-variant-numeric: tabular-nums; flex-shrink: 0;
+    }
+    .yt-ctrl-seek {
+      flex: 1; accent-color: #ff4444; cursor: pointer; height: 4px;
+    }
+    .yt-host-badge {
+      font-size: 10px; color: #ff4444; font-weight: 700;
+      letter-spacing: 0.05em; flex-shrink: 0;
+    }
+
     /* Game ended notice — replaces invite card in the same bubble */
     .game-ended-notice {
       display: flex;
@@ -4335,6 +4389,11 @@
           <div class="game-card-name">Trivia</div>
           <div class="game-card-desc">Answer questions, fastest wins</div>
         </div>
+        <div class="game-card" data-game="youtube">
+          <div class="game-card-icon">▶️</div>
+          <div class="game-card-name">Watch Together</div>
+          <div class="game-card-desc">Sync a YouTube video with everyone</div>
+        </div>
       </div>
     </div>
   </div>
@@ -4407,6 +4466,23 @@
         <div class="game-over-title" id="gameOverTitle">Game Over</div>
         <div class="game-over-sub" id="gameOverSub"></div>
         <button class="game-over-btn" id="gameOverBtn">Play Again</button>
+      </div>
+      <!-- YouTube Watch Together -->
+      <div class="yt-watch-overlay" id="ytWatchOverlay" style="display:none;">
+        <div class="yt-url-bar" id="ytUrlBar">
+          <input class="yt-url-input" id="ytUrlInput" type="text" placeholder="Paste a YouTube URL or video ID…" />
+          <button class="yt-url-btn" id="ytUrlBtn">▶ Load</button>
+        </div>
+        <div class="yt-player-wrap" id="ytPlayerWrap">
+          <div id="ytPlayerEl"></div>
+        </div>
+        <div class="yt-controls" id="ytControls" style="display:none;">
+          <button class="yt-ctrl-btn" id="ytPlayPause">⏸</button>
+          <span class="yt-ctrl-time" id="ytTimeDisplay">0:00</span>
+          <input class="yt-ctrl-seek" id="ytSeekBar" type="range" min="0" max="100" value="0" step="0.1" />
+          <span class="yt-ctrl-dur" id="ytDuration">0:00</span>
+          <button class="yt-ctrl-btn" id="ytSync">⟳ Sync</button>
+        </div>
       </div>
       <canvas id="gameCanvas"></canvas>
     </div>
@@ -8098,11 +8174,12 @@
     const PLAYER_COLORS = ['#ff6b6b','#4ecdc4','#45b7d1','#96ceb4','#ffeaa7','#dda0dd','#98d8c8','#f7dc6f'];
 
     const GAME_DEFS = {
-      snake: { name: 'Snake.io',    icon: '🐍', minPlayers: 1, maxPlayers: 8 },
-      agar:  { name: 'Agar.io',     icon: '🫧', minPlayers: 1, maxPlayers: 8 },
-      pool:  { name: '8-Ball Pool', icon: '🎱', minPlayers: 2, maxPlayers: 2 },
-      pong:  { name: 'Pong',        icon: '🏓', minPlayers: 2, maxPlayers: 2 },
-      trivia:{ name: 'Trivia',      icon: '🧠', minPlayers: 2, maxPlayers: 8 },
+      snake:   { name: 'Snake.io',       icon: '🐍', minPlayers: 1, maxPlayers: 8 },
+      agar:    { name: 'Agar.io',        icon: '🫧', minPlayers: 1, maxPlayers: 8 },
+      pool:    { name: '8-Ball Pool',    icon: '🎱', minPlayers: 2, maxPlayers: 2 },
+      pong:    { name: 'Pong',           icon: '🏓', minPlayers: 2, maxPlayers: 2 },
+      trivia:  { name: 'Trivia',         icon: '🧠', minPlayers: 2, maxPlayers: 8 },
+      youtube: { name: 'Watch Together', icon: '▶️', minPlayers: 1, maxPlayers: 20 },
     };
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -8116,7 +8193,7 @@
     let myColor         = '#ffffff';
     let myGameName      = '';
     let lastHostWrite   = 0;
-    const HOST_WRITE_MS = 100; // 10fps Firestore writes — physics still runs at 60fps locally
+    const HOST_WRITE_MS = 50; // 20fps Firestore writes — physics still runs at 60fps locally
 
     // ── Client interpolation state ────────────────────────────────────────────
     // Non-host clients extrapolate between server snapshots so movement looks
@@ -8193,11 +8270,11 @@
       const ref = await GAMES_REF().add({
         type,
         host: uid,
-        state: 'lobby',
+        state: type === 'youtube' ? 'playing' : 'lobby',
         players: {
           [uid]: { name: myGameName, color: myColor, score: 0, alive: true, joinedAt: Date.now() }
         },
-        gameData: {},
+        gameData: type === 'youtube' ? { ytState: null } : {},
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
 
@@ -8282,23 +8359,32 @@
       gameWindowBackdrop.classList.add('visible');
       gameOverOverlay.classList.remove('visible');
       gameHud.style.display          = 'none';
-      gameLobby.style.display        = 'flex';
-      gameLobbyStart.style.display   = isGameHost ? 'inline-block' : 'none';
-      gameLobbyWaiting.style.display = isGameHost ? 'none' : 'block';
-      gameLobbyTitle.textContent     = `${def.icon} ${def.name}`;
 
-      // Size canvas to fill the wrap
-      requestAnimationFrame(() => { resizeCanvas(); });
+      if (type === 'youtube') {
+        // YouTube watch together — bypass lobby, show YT overlay directly
+        gameLobby.style.display       = 'none';
+        gameCanvas.style.display      = 'none';
+        ytWatchOverlay.style.display  = 'flex';
+        initYouTubeWatcher(gameId);
+      } else {
+        gameLobby.style.display        = 'flex';
+        gameLobbyStart.style.display   = isGameHost ? 'inline-block' : 'none';
+        gameLobbyWaiting.style.display = isGameHost ? 'none' : 'block';
+        gameLobbyTitle.textContent     = `${def.icon} ${def.name}`;
+        gameCanvas.style.display       = 'block';
+        ytWatchOverlay.style.display   = 'none';
+        // Size canvas to fill the wrap
+        requestAnimationFrame(() => { resizeCanvas(); });
+        // Start client render loop (runs independently of Firestore updates)
+        startClientRenderLoop();
+      }
 
-      // Firestore listener
+      // Firestore listener (all types)
       if (gameUnsub) gameUnsub();
       gameUnsub = GAMES_REF().doc(gameId).onSnapshot(snap => {
         if (!snap.exists) { leaveGame(); return; }
         handleGameSnapshot(snap.data());
       }, e => console.warn('[game] snapshot error:', e));
-
-      // Start client render loop (runs independently of Firestore updates)
-      startClientRenderLoop();
     }
 
     gameWindowClose.addEventListener('click', leaveGame);
@@ -8322,6 +8408,10 @@
         el.textContent = p.name;
         gameLobbyPlayers.appendChild(el);
       });
+
+      // YouTube watch together is handled entirely by initYouTubeWatcher's
+      // own Firestore listener — no lobby/HUD/physics needed here.
+      if (activeGameType === 'youtube') return;
 
       if (data.state === 'lobby') {
         gameLobby.style.display = 'flex';
@@ -8377,8 +8467,6 @@
           if (typeof maybeShowPoolTutorial === 'function') maybeShowPoolTutorial();
         }
       } else if (data.state === 'ended') {
-        // Use else-if: prevent the 'playing' block from removing the overlay
-        // right before this block adds it
         showGameOver(data);
       } else if (data.state === 'lobby') {
         gameLobby.style.display = 'flex';
@@ -10009,6 +10097,11 @@
         }).catch(()=>{});
         if (isGameHost) GAMES_REF().doc(activeGameId).update({state:'ended'}).catch(()=>{});
       }
+      // Destroy YT player if active
+      destroyYouTubeWatcher();
+      ytWatchOverlay.style.display = 'none';
+      gameCanvas.style.display     = 'block';
+
       activeGameId=null; activeGameType=null; isGameHost=false; gameState=null;
       // Clear interpolation state so stale snapshots don't bleed into next game
       _prevSnap=null; _currSnap=null; _prevSnapTime=0; _currSnapTime=0; _snapInterval=100;
@@ -10018,7 +10111,301 @@
       gameOverOverlay.classList.remove('visible');
     }
 
-    // ── Pool tutorial ─────────────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    // YOUTUBE WATCH TOGETHER
+    // ════════════════════════════════════════════════════════════════════════
+    // Architecture:
+    //  • Host controls playback (play/pause/seek). Their player state is written
+    //    to Firestore every 2s and on every explicit action.
+    //  • Non-host clients read the Firestore doc and sync their local YT player
+    //    to match, compensating for travel time so everyone is in sync.
+    //  • The YouTube IFrame API is loaded lazily on first use.
+
+    const ytWatchOverlay = document.getElementById('ytWatchOverlay');
+    const ytUrlInput     = document.getElementById('ytUrlInput');
+    const ytUrlBtn       = document.getElementById('ytUrlBtn');
+    const ytPlayerWrap   = document.getElementById('ytPlayerWrap');
+    const ytControls     = document.getElementById('ytControls');
+    const ytPlayPause    = document.getElementById('ytPlayPause');
+    const ytTimeDisplay  = document.getElementById('ytTimeDisplay');
+    const ytSeekBar      = document.getElementById('ytSeekBar');
+    const ytDuration     = document.getElementById('ytDuration');
+    const ytSyncBtn      = document.getElementById('ytSync');
+
+    let _ytPlayer        = null;   // YT.Player instance
+    let _ytGameId        = null;   // current watch-together game doc ID
+    let _ytUnsub         = null;   // Firestore listener unsub
+    let _ytWriteTimer    = null;   // host periodic write interval
+    let _ytSeekDragging  = false;  // user is dragging seek bar
+    let _ytIgnoreSync    = false;  // brief window after host action to ignore remote sync
+    let _ytApiReady      = false;  // YT IFrame API loaded
+
+    // Extract video ID from URL or bare ID
+    function ytExtractId(raw) {
+      raw = raw.trim();
+      // youtu.be/<id>
+      let m = raw.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
+      if (m) return m[1];
+      // ?v=<id>
+      m = raw.match(/[?&]v=([A-Za-z0-9_-]{11})/);
+      if (m) return m[1];
+      // /embed/<id>
+      m = raw.match(/\/embed\/([A-Za-z0-9_-]{11})/);
+      if (m) return m[1];
+      // bare 11-char ID
+      if (/^[A-Za-z0-9_-]{11}$/.test(raw)) return raw;
+      return null;
+    }
+
+    function ytFmtTime(s) {
+      s = Math.floor(s || 0);
+      const m = Math.floor(s / 60);
+      const ss = String(s % 60).padStart(2, '0');
+      return `${m}:${ss}`;
+    }
+
+    // Load YT IFrame API lazily
+    function loadYTApi() {
+      return new Promise(resolve => {
+        if (_ytApiReady && window.YT?.Player) { resolve(); return; }
+        if (window.YT?.Player) { _ytApiReady = true; resolve(); return; }
+        // API already loading (e.g. script tag added earlier)
+        if (document.getElementById('yt-iframe-api')) {
+          const poll = setInterval(() => {
+            if (window.YT?.Player) { _ytApiReady = true; clearInterval(poll); resolve(); }
+          }, 100);
+          return;
+        }
+        window.onYouTubeIframeAPIReady = () => { _ytApiReady = true; resolve(); };
+        const s = document.createElement('script');
+        s.id  = 'yt-iframe-api';
+        s.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(s);
+      });
+    }
+
+    // Create or load a new video into the player
+    async function ytLoadVideo(videoId) {
+      await loadYTApi();
+      ytControls.style.display = 'flex';
+
+      if (_ytPlayer) {
+        _ytPlayer.loadVideoById(videoId);
+        if (!isGameHost) _ytPlayer.pauseVideo();
+        return;
+      }
+
+      // First time — create the player
+      const container = document.createElement('div');
+      container.id = 'ytPlayerInner';
+      document.getElementById('ytPlayerEl').innerHTML = '';
+      document.getElementById('ytPlayerEl').appendChild(container);
+
+      _ytPlayer = new YT.Player('ytPlayerInner', {
+        width: '100%',
+        height: '100%',
+        videoId,
+        playerVars: {
+          autoplay:       isGameHost ? 1 : 0,
+          controls:       isGameHost ? 1 : 0, // host uses native controls + ours; guests use only ours
+          disablekb:      isGameHost ? 0 : 1,
+          rel:            0,
+          modestbranding: 1,
+          origin:         location.origin,
+        },
+        events: {
+          onReady: e => {
+            if (isGameHost) { e.target.playVideo(); ytPushState(); }
+          },
+          onStateChange: e => {
+            if (!isGameHost) return; // non-host never drives state
+            // Push state on every host state change immediately
+            clearTimeout(_ytIgnoreSync);
+            _ytIgnoreSync = true;
+            setTimeout(() => { _ytIgnoreSync = false; }, 1500);
+            ytPushState();
+            ytUpdateControls();
+          },
+        },
+      });
+
+      // Ticker to update seek bar + time display
+      setInterval(() => {
+        if (!_ytPlayer?.getCurrentTime) return;
+        const t = _ytPlayer.getCurrentTime() || 0;
+        const d = _ytPlayer.getDuration()    || 0;
+        ytTimeDisplay.textContent = ytFmtTime(t);
+        ytDuration.textContent    = ytFmtTime(d);
+        if (!_ytSeekDragging && d > 0) ytSeekBar.value = (t / d) * 100;
+        ytUpdateControls();
+      }, 500);
+    }
+
+    function ytUpdateControls() {
+      if (!_ytPlayer?.getPlayerState) return;
+      const state = _ytPlayer.getPlayerState();
+      ytPlayPause.textContent = state === YT.PlayerState.PLAYING ? '⏸' : '▶';
+    }
+
+    // Host: write current player state to Firestore
+    function ytPushState(force = false) {
+      if (!isGameHost || !_ytPlayer?.getCurrentTime || !_ytGameId) return;
+      const state = _ytPlayer.getPlayerState();
+      const playing = state === YT.PlayerState.PLAYING;
+      GAMES_REF().doc(_ytGameId).update({
+        'gameData.ytState': {
+          videoId:    _ytPlayer.getVideoData()?.video_id || '',
+          t:          _ytPlayer.getCurrentTime() || 0,
+          playing,
+          serverTime: Date.now(), // used by clients to compensate for travel time
+        }
+      }).catch(() => {});
+    }
+
+    // Non-host: apply server state to local player
+    function ytApplyState(ytState) {
+      if (!_ytPlayer?.seekTo || isGameHost || _ytIgnoreSync) return;
+      if (!ytState?.videoId) return;
+
+      // Load video if different
+      const currentId = _ytPlayer.getVideoData?.()?.video_id;
+      if (currentId !== ytState.videoId) {
+        _ytPlayer.loadVideoById(ytState.videoId);
+        _ytPlayer.pauseVideo();
+      }
+
+      // Compensate for network travel time
+      const travelMs    = Math.min(2000, Date.now() - (ytState.serverTime || Date.now()));
+      const targetTime  = ytState.t + (ytState.playing ? travelMs / 1000 : 0);
+      const currentTime = _ytPlayer.getCurrentTime() || 0;
+      const drift       = Math.abs(currentTime - targetTime);
+
+      // Only seek if drift > 1.5 seconds to avoid constant micro-seeks
+      if (drift > 1.5) {
+        _ytPlayer.seekTo(targetTime, true);
+      }
+
+      if (ytState.playing) {
+        _ytPlayer.playVideo();
+      } else {
+        _ytPlayer.pauseVideo();
+      }
+
+      ytUpdateControls();
+    }
+
+    function initYouTubeWatcher(gameId) {
+      _ytGameId = gameId;
+
+      // Show host badge / hide controls for non-host
+      if (!isGameHost) {
+        ytUrlInput.disabled      = true;
+        ytUrlBtn.disabled        = true;
+        ytUrlInput.placeholder   = 'Waiting for host to load a video…';
+        // Add a subtle host label
+        if (!document.getElementById('ytHostBadge')) {
+          const badge = document.createElement('span');
+          badge.id        = 'ytHostBadge';
+          badge.className = 'yt-host-badge';
+          badge.textContent = '● LIVE SYNC';
+          document.querySelector('.yt-url-bar').appendChild(badge);
+        }
+      }
+
+      // Listen for state changes from host
+      _ytUnsub = GAMES_REF().doc(gameId).onSnapshot(snap => {
+        if (!snap.exists) return;
+        const ytState = snap.data()?.gameData?.ytState;
+        if (!ytState) return;
+
+        // Non-host: sync to host state
+        if (!isGameHost) {
+          if (!_ytPlayer && ytState.videoId) {
+            ytLoadVideo(ytState.videoId).then(() => ytApplyState(ytState));
+          } else {
+            ytApplyState(ytState);
+          }
+        }
+
+        // Everyone: update URL bar to show current video
+        if (ytState.videoId) {
+          ytUrlInput.value = `https://youtube.com/watch?v=${ytState.videoId}`;
+        }
+      });
+
+      // Host: periodic state push every 2s to keep clients in sync
+      if (isGameHost) {
+        _ytWriteTimer = setInterval(() => ytPushState(), 2000);
+      }
+    }
+
+    function destroyYouTubeWatcher() {
+      if (_ytUnsub)  { _ytUnsub(); _ytUnsub = null; }
+      if (_ytWriteTimer) { clearInterval(_ytWriteTimer); _ytWriteTimer = null; }
+      if (_ytPlayer) {
+        try { _ytPlayer.destroy(); } catch(e) {}
+        _ytPlayer = null;
+      }
+      _ytGameId = null;
+      _ytApiReady = false;
+      // Reset URL bar
+      ytUrlInput.disabled     = false;
+      ytUrlBtn.disabled       = false;
+      ytUrlInput.value        = '';
+      ytUrlInput.placeholder  = 'Paste a YouTube URL or video ID…';
+      ytControls.style.display = 'none';
+      const badge = document.getElementById('ytHostBadge');
+      if (badge) badge.remove();
+    }
+
+    // Host loads a video via URL bar
+    ytUrlBtn.addEventListener('click', async () => {
+      if (!isGameHost) return;
+      const vid = ytExtractId(ytUrlInput.value);
+      if (!vid) { ytUrlInput.style.borderColor = '#f87171'; setTimeout(() => { ytUrlInput.style.borderColor = ''; }, 1500); return; }
+      await ytLoadVideo(vid);
+      ytPushState(true);
+    });
+    ytUrlInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') ytUrlBtn.click();
+    });
+
+    // Host play/pause button
+    ytPlayPause.addEventListener('click', () => {
+      if (!_ytPlayer || !isGameHost) return;
+      const state = _ytPlayer.getPlayerState();
+      if (state === YT.PlayerState.PLAYING) { _ytPlayer.pauseVideo(); }
+      else { _ytPlayer.playVideo(); }
+      setTimeout(() => ytPushState(true), 100);
+    });
+
+    // Seek bar drag (host only)
+    ytSeekBar.addEventListener('mousedown',  () => { _ytSeekDragging = true; });
+    ytSeekBar.addEventListener('touchstart', () => { _ytSeekDragging = true; }, { passive: true });
+    ytSeekBar.addEventListener('input', () => {
+      if (!_ytPlayer || !isGameHost) return;
+      const d = _ytPlayer.getDuration() || 0;
+      const t = (ytSeekBar.value / 100) * d;
+      ytTimeDisplay.textContent = ytFmtTime(t);
+    });
+    ytSeekBar.addEventListener('change', () => {
+      _ytSeekDragging = false;
+      if (!_ytPlayer || !isGameHost) return;
+      const d = _ytPlayer.getDuration() || 0;
+      const t = (ytSeekBar.value / 100) * d;
+      _ytPlayer.seekTo(t, true);
+      setTimeout(() => ytPushState(true), 150);
+    });
+
+    // Manual sync button (non-host can force re-sync)
+    ytSyncBtn.addEventListener('click', () => {
+      _ytIgnoreSync = false;
+      if (!_ytGameId) return;
+      GAMES_REF().doc(_ytGameId).get().then(snap => {
+        const ytState = snap.data()?.gameData?.ytState;
+        if (ytState) ytApplyState(ytState);
+      });
+    });
     const poolTutorialEl       = document.getElementById('poolTutorial');
     const poolTutorialGotItBtn = document.getElementById('poolTutorialGotIt');
     const poolTutorialSkipBtn  = document.getElementById('poolTutorialSkip');
