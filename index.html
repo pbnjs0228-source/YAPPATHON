@@ -5631,11 +5631,11 @@
 
                     <div class="changelog-entry">
             <div class="changelog-version">
-              <span class="changelog-tag" style="background:linear-gradient"(135deg,#ff8a3d,#ffca69,#8aa9ff,#5b4bff);color:#050712;">v1.0</span>
+              <span class="changelog-tag" style="background:linear-gradient"(135deg,#ff8a3d,#ffca69,#8aa9ff,#5b4bff);color:#050712;">v2.0</span>
               <span class="changelog-date">April 28, 2026</span>
             </div>
-            <div class="changelog-title">🎉 v1.0 Release</div>
-            <div class="changelog-notes">ORBIT is officially 1.0! This release brings replies (tap ↩ on any message), @mention autocomplete with highlighting, image lightboxes (click any image to enlarge), voice chat improvements with reliable peer-to-peer audio and green speaking indicators, full mobile support, and dark Nebula Blue & Hydrogen Red themes.</div>
+            <div class="changelog-title">🎉 v2.0 Release</div>
+            <div class="changelog-notes">We added a brand new 'YouTube Watch Together' feature, so if you're bored, just get your friends online, and watch your favourite videos on repeat. Also, a brand new games library, so you're always entertained. Have fun with these amazing new features!</div>
           </div>
 
           <div class="changelog-entry">
@@ -7155,7 +7155,6 @@
       if (unsubscribeMembers) unsubscribeMembers();
       unsubscribeMembers = db
         .collection("users")
-        .orderBy("displayName", "asc")
         .onSnapshot(snapshot => {
           userCache = {};
           snapshot.forEach(doc => {
