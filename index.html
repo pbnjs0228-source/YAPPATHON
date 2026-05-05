@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <title>O R B I T</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     * {
       box-sizing: border-box;
@@ -16,7 +19,9 @@
     }
 
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -244,11 +249,11 @@
 
     .app {
       width: 100%;
-      max-width: 1100px;
-      height: 90vh;
+      max-width: 1200px;
+      height: 92vh;
       background: var(--bg-surface);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-soft);
+      border-radius: 12px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.55);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -256,17 +261,19 @@
       transition:
         background-color 180ms ease-out,
         border-color 180ms ease-out,
-        box-shadow 180ms ease-out,
-        transform 120ms ease-out;
+        box-shadow 180ms ease-out;
     }
 
     .app-header {
-      padding: 12px 16px;
+      padding: 0 16px;
+      height: 48px;
       border-bottom: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: var(--bg-subtle);
+      background: var(--bg-surface);
+      flex-shrink: 0;
+      box-shadow: 0 1px 0 var(--border-subtle);
       transition:
         background-color 180ms ease-out,
         border-color 180ms ease-out;
@@ -279,13 +286,17 @@
     }
 
     .app-title-main {
-      font-size: 16px;
-      font-weight: 600;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
     }
 
     .app-title-sub {
-      font-size: 12px;
-      color: var(--text-muted);
+      font-size: 10px;
+      color: var(--text-soft);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
     }
 
     .app-right {
@@ -377,40 +388,45 @@
       flex: 1;
       display: flex;
       flex-direction: row;
-      padding: 8px 12px 12px;
-      gap: 8px;
+      padding: 0;
+      gap: 0;
       min-height: 0;
       transition: background-color 180ms ease-out;
     }
 
     .main-column {
-      flex: 3;
+      flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 0;
       min-width: 0;
       min-height: 0;
     }
 
     .sidebar-column {
-      flex: 1.2;
+      width: 240px;
+      flex-shrink: 0;
       display: flex;
       flex-direction: column;
       min-width: 0;
       min-height: 0;
+      border-left: 1px solid var(--border-subtle);
     }
 
     .channel-header {
-      padding: 8px 10px;
-      border-radius: var(--radius-md);
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-subtle);
+      padding: 0 16px;
+      height: 48px;
+      flex-shrink: 0;
+      border-radius: 0;
+      background: var(--bg-surface);
+      border: none;
+      border-bottom: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      box-shadow: 0 1px 0 var(--border-subtle);
       transition:
-        background-color 180ms ease-out,
-        border-color 180ms ease-out;
+        background-color 180ms ease-out;
     }
 
     .channel-info {
@@ -420,13 +436,25 @@
     }
 
     .channel-name {
-      font-size: 14px;
-      font-weight: 600;
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .channel-name::before {
+      content: "#";
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 18px;
     }
 
     .channel-desc {
       font-size: 12px;
-      color: var(--text-muted);
+      color: var(--text-soft);
+      margin-left: 2px;
+      padding-left: 12px;
+      border-left: 1.5px solid var(--border-strong);
     }
 
     .channel-meta {
@@ -436,65 +464,80 @@
 
     .messages {
       flex: 1;
-      margin-top: 4px;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border-subtle);
+      margin-top: 0;
+      border-radius: 0;
+      border: none;
       background: var(--bg-surface);
-      padding: 8px;
+      padding: 16px 16px 8px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 0;
       min-height: 0;
       scroll-behavior: smooth;
       transition:
-        background-color 180ms ease-out,
-        border-color 180ms ease-out;
+        background-color 180ms ease-out;
     }
 
     .message-row {
       display: flex;
       align-items: flex-start;
-      gap: 8px;
-      font-size: 13px;
-      margin-top: 2px;
+      gap: 12px;
+      font-size: 14px;
+      margin-top: 0;
+      padding: 2px 8px;
+      border-radius: 4px;
       animation: fadeIn 140ms ease-out;
       will-change: opacity;
+      transition: background 60ms;
+    }
+    .message-row:hover {
+      background: rgba(255,255,255,0.03);
+    }
+    body.theme-light .message-row:hover {
+      background: rgba(0,0,0,0.03);
+    }
+    /* First message in a group gets top margin */
+    .message-row.group-start {
+      margin-top: 16px;
     }
 
     /* Grouped follow-on message: tighter spacing, avatar placeholder for alignment */
     .message-row.grouped {
-      margin-top: 1px;
+      margin-top: 0;
     }
 
     /* Avatar spacer so grouped bubbles stay aligned under the real avatar */
     .message-avatar-spacer {
-      width: 28px;
+      width: 40px;
       flex-shrink: 0;
     }
 
     .message-row.self {
-      justify-content: flex-end;
+      justify-content: flex-start;
     }
 
     .message-avatar {
-      width: 28px;
-      height: 28px;
-      border-radius: var(--radius-pill);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
       background: var(--accent-soft);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 14px;
+      font-weight: 700;
       color: var(--text-main);
       flex-shrink: 0;
       overflow: hidden;
       position: relative;
+      margin-top: 2px;
+      cursor: pointer;
       transition:
         background-color 180ms ease-out,
         transform 120ms ease-out;
     }
+    .message-avatar:hover { transform: scale(1.06); }
 
     .message-avatar-img {
       width: 100%;
@@ -504,71 +547,17 @@
     }
 
     .message-bubble {
-      max-width: 70%;
-      border-radius: 16px;
-      padding: 8px 10px;
-      background: #f3f4f6;
+      flex: 1;
+      min-width: 0;
+      max-width: 100%;
+      padding: 0;
+      background: transparent;
       color: var(--text-main);
-      transition:
-        background-color 180ms ease-out,
-        color 180ms ease-out,
-        transform 80ms ease-out;
     }
-
-    body.theme-dark .message-bubble {
-      background: #111827;
-      color: #e5e7eb;
-    }
-
-    body.theme-blue .message-bubble {
-      background: #0c1630;
-      color: #c8dcff;
-    }
-
-    body.theme-purple .message-bubble {
-      background: #1e0e40;
-      color: #e8d5ff;
-    }
-
-    body.theme-red .message-bubble {
-      background: #1e0505;
-      color: #ffd5d5;
-    }
-
+    /* Remove self-bubble distinction - Discord style everyone is left-aligned */
     .message-row.self .message-bubble {
-      background: var(--accent);
-      color: var(--accent-contrast);
-    }
-
-    /* ── Per-theme gradient self-bubbles ── */
-    body.theme-dark .message-row.self .message-bubble {
-      background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 45%, #c4b5fd 100%);
-      color: #1a0a3a;
-      border-color: transparent;
-    }
-
-    body.theme-light .message-row.self .message-bubble {
-      background: linear-gradient(135deg, #4c1d95 0%, #2e1065 50%, #6d28d9 100%);
-      color: #ede9fe;
-      border-color: transparent;
-    }
-
-    body.theme-blue .message-row.self .message-bubble {
-      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #60a5fa 100%);
-      color: #eff6ff;
-      border-color: transparent;
-    }
-
-    body.theme-purple .message-row.self .message-bubble {
-      background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 50%, #a855f7 100%);
-      color: #f5f3ff;
-      border-color: transparent;
-    }
-
-    body.theme-red .message-row.self .message-bubble {
-      background: linear-gradient(135deg, #dc2626 0%, #991b1b 50%, #f87171 100%);
-      color: #fff1f2;
-      border-color: transparent;
+      background: transparent;
+      color: var(--text-main);
     }
 
     /* ── Typing indicator ── */
@@ -626,33 +615,37 @@
     .message-meta {
       display: flex;
       align-items: baseline;
-      gap: 6px;
-      margin-bottom: 2px;
+      gap: 8px;
+      margin-bottom: 3px;
       flex-wrap: wrap;
     }
 
     .message-author {
-      font-weight: 500;
-      font-size: 12px;
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-main);
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
+      cursor: pointer;
     }
+    .message-author:hover { text-decoration: underline; }
 
     .message-time {
       font-size: 11px;
       color: var(--text-soft);
+      font-weight: 400;
     }
-
     .message-row.self .message-time {
-      color: #d1d5db;
+      color: var(--text-soft);
     }
 
     .message-text {
-      font-size: 13px;
-      line-height: 1.4;
+      font-size: 15px;
+      line-height: 1.5;
       white-space: pre-wrap;
       word-wrap: break-word;
+      color: var(--text-main);
     }
 
     .message-delete-btn {
@@ -690,49 +683,61 @@
     }
 
     .input-area {
-      margin-top: 8px;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-subtle);
-      padding: 8px;
+      margin-top: 0;
+      border-radius: 0;
+      border: none;
+      border-top: none;
+      background: var(--bg-surface);
+      padding: 0 16px 16px;
       display: flex;
       flex-direction: column;
       gap: 6px;
+      flex-shrink: 0;
       transition:
-        background-color 180ms ease-out,
-        border-color 180ms ease-out;
+        background-color 180ms ease-out;
     }
 
     .input-row {
       display: flex;
       align-items: flex-end;
-      gap: 8px;
+      gap: 0;
+      background: var(--bg-subtle);
+      border-radius: 10px;
+      overflow: visible;
     }
+    body.theme-dark .input-row { background: #111827; }
+    body.theme-blue .input-row { background: #0c1630; }
+    body.theme-purple .input-row { background: #1e0e40; }
+    body.theme-red .input-row { background: #1e0505; }
 
     .input-box {
       flex: 1;
-      border-radius: 14px;
-      border: 1px solid var(--border-subtle);
-      background: var(--input-bg);
-      padding: 6px 10px;
+      border-radius: 10px;
+      border: none;
+      background: var(--bg-subtle);
+      padding: 10px 14px;
       display: flex;
       align-items: center;
       transition:
-        background-color 180ms ease-out,
-        border-color 180ms ease-out;
+        background-color 180ms ease-out;
     }
+    body.theme-dark .input-box { background: #111827; }
+    body.theme-blue .input-box { background: #0c1630; }
+    body.theme-purple .input-box { background: #1e0e40; }
+    body.theme-red .input-box { background: #1e0505; }
 
     .input-box textarea {
       border: none;
       outline: none;
       resize: none;
       width: 100%;
-      font-size: 13px;
+      font-size: 15px;
       font-family: inherit;
       background: transparent;
-      max-height: 80px;
-      min-height: 18px;
+      max-height: 200px;
+      min-height: 22px;
       color: var(--text-main);
+      line-height: 1.4;
     }
 
     .input-box textarea::placeholder {
@@ -1186,37 +1191,35 @@
     .sidebar-card {
       flex: 1;
       border-radius: 0;
-      border-left: 1px solid var(--border-subtle);
-      border-right: none;
-      border-top: none;
-      border-bottom: none;
-      background: var(--bg-surface);
-      padding: 8px 8px 8px 12px;
+      border: none;
+      border-bottom: 1px solid var(--border-subtle);
+      background: transparent;
+      padding: 16px 8px 8px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 4px;
       min-height: 0;
       transition:
-        background-color 180ms ease-out,
-        border-color 180ms ease-out;
+        background-color 180ms ease-out;
     }
 
     .sidebar-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 12px;
-      color: var(--text-muted);
-      padding-bottom: 4px;
-      border-bottom: 1px solid var(--border-subtle);
+      font-size: 11px;
+      color: var(--text-soft);
+      padding: 0 8px 6px;
+      border-bottom: none;
       transition:
-        border-color 180ms ease-out,
         color 180ms ease-out;
     }
 
     .sidebar-title {
-      font-weight: 600;
-      font-size: 12px;
+      font-weight: 700;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
     }
 
     .sidebar-header-actions {
@@ -1238,40 +1241,38 @@
     .member-row {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 4px 4px;
-      border-radius: 999px;
-      cursor: default;
+      gap: 10px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
       transition:
-        background-color 120ms ease-out,
-        transform 80ms ease-out;
+        background-color 100ms ease-out;
       animation: fadeIn 140ms ease-out;
     }
 
     .member-row.me {
-      background: rgba(148, 163, 184, 0.12);
+      background: color-mix(in srgb, var(--accent-soft) 50%, transparent);
     }
 
     .member-row:hover {
-      background: rgba(148, 163, 184, 0.16);
-      transform: translateY(-1px);
+      background: color-mix(in srgb, var(--accent-soft) 60%, transparent);
     }
 
     .member-avatar {
-      width: 22px;
-      height: 22px;
-      border-radius: 999px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
       background: var(--accent-soft);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
-      font-weight: 600;
+      font-size: 12px;
+      font-weight: 700;
       color: var(--text-main);
       overflow: hidden;
+      flex-shrink: 0;
       transition:
-        background-color 180ms ease-out,
-        transform 120ms ease-out;
+        background-color 180ms ease-out;
     }
 
     .member-avatar-img {
@@ -1296,7 +1297,8 @@
     }
 
     .member-name {
-      font-size: 12px;
+      font-size: 13px;
+      font-weight: 500;
       white-space: nowrap;
       text-overflow: ellipsis;
       overflow: hidden;
@@ -2775,7 +2777,9 @@
        VOICE CHANNEL
     ══════════════════════════════════════════ */
     .voice-card {
-      margin-top: 12px;
+      margin-top: 0;
+      border-bottom: none;
+      flex: 1;
     }
 
     .voice-join-btn {
@@ -2783,21 +2787,19 @@
       align-items: center;
       gap: 8px;
       width: 100%;
-      padding: 9px 12px;
-      border-radius: var(--radius-sm);
-      border: 1.5px solid var(--border-subtle);
-      background: transparent;
-      color: var(--text-muted);
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: none;
+      background: rgba(34,197,94,0.1);
+      color: #22c55e;
       font-size: 13px;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
-      transition: background 140ms, color 140ms, border-color 140ms;
+      transition: background 140ms;
     }
 
     .voice-join-btn:hover {
-      background: var(--accent-soft);
-      color: var(--text-main);
-      border-color: var(--border-strong);
+      background: rgba(34,197,94,0.18);
     }
 
     .voice-join-btn.active {
@@ -4262,6 +4264,200 @@
       .game-card { padding: 10px 8px; }
       .game-card-icon { font-size: 26px; }
     }
+
+    /* ═══════════════════════════════════════════
+       DISCORD-STYLE OVERRIDES & REFINEMENTS
+       ═══════════════════════════════════════════ */
+
+    /* Typing indicator flush */
+    .typing-indicator {
+      padding: 4px 24px 8px;
+      font-size: 12px;
+    }
+
+    /* Input area: proper Discord-style wrapping box */
+    .input-tools {
+      display: flex;
+      align-items: stretch;
+      flex-shrink: 0;
+    }
+    .input-tools .btn {
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 0 12px;
+      font-size: 18px;
+      color: var(--text-muted);
+      cursor: pointer;
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+    }
+    .input-tools .btn:hover { color: var(--text-main); background: transparent; box-shadow: none; }
+
+    /* Input hint: Discord-style subtle bottom row */
+    .input-hint {
+      padding: 0 4px;
+      font-size: 11px;
+    }
+
+    /* Message grouped hover: show timestamp on left (Discord hover ts) */
+    .message-row.grouped .message-avatar-spacer {
+      position: relative;
+    }
+    .message-row.grouped:hover .msg-hover-time {
+      display: block;
+    }
+    .msg-hover-time {
+      display: none;
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 10px;
+      color: var(--text-soft);
+      white-space: nowrap;
+      width: 40px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Status badge: Discord style online dot */
+    .online-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      border: 2px solid var(--bg-surface);
+      position: absolute;
+      bottom: -1px;
+      right: -1px;
+    }
+
+    /* Sidebar body padding */
+    .sidebar-body {
+      padding: 0 8px;
+    }
+
+    /* Presence label */
+    #presenceLabel {
+      font-size: 12px;
+      color: var(--text-soft);
+    }
+
+    /* Scrollbar: thin Discord-style */
+    .messages::-webkit-scrollbar,
+    .sidebar-body::-webkit-scrollbar {
+      width: 4px;
+    }
+    .messages::-webkit-scrollbar-track,
+    .sidebar-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .messages::-webkit-scrollbar-thumb,
+    .sidebar-body::-webkit-scrollbar-thumb {
+      background: var(--border-strong);
+      border-radius: 4px;
+    }
+
+    /* App user: tighter in header */
+    .app-user {
+      padding: 4px 6px;
+      border-radius: 6px;
+    }
+    .app-user-label-main { font-size: 13px; font-weight: 600; }
+    .app-user-label-sub  { font-size: 11px; }
+
+    /* Avatar sizes in header */
+    .avatar { width: 32px; height: 32px; border-radius: 50%; }
+
+    /* Status banner */
+    .status-banner {
+      font-size: 12px;
+      padding: 4px 16px;
+      background: color-mix(in srgb, var(--accent-soft) 40%, transparent);
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: left;
+      font-weight: 500;
+    }
+
+    /* Empty state */
+    .empty-state {
+      padding: 24px 8px;
+      font-size: 14px;
+    }
+
+    /* Date separator */
+    .date-separator {
+      margin: 20px 0 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+
+    /* Voice participant */
+    .voice-participant {
+      border-radius: 6px;
+      padding: 5px 8px;
+    }
+    .voice-participant-name { font-size: 13px; font-weight: 500; }
+
+    /* Voice card sidebar header */
+    .voice-card .sidebar-header {
+      padding: 16px 8px 6px;
+    }
+
+    /* Input box focus ring */
+    .input-row:focus-within {
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+    }
+
+    /* Reply bar */
+    .reply-bar {
+      border-radius: 8px;
+      margin: 8px 0 4px;
+      border-left-width: 2px;
+    }
+
+    /* Mention tag */
+    .mention-tag {
+      border-radius: 3px;
+      padding: 0 2px;
+      font-weight: 600;
+    }
+
+    /* Message delete / reply btn */
+    .message-delete-btn,
+    .message-reply-btn {
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    /* Pill */
+    .pill {
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+    }
+
+    /* Grouped message bubble header hidden but layout stays */
+    .message-row.grouped .message-bubble-header {
+      display: none;
+    }
+    .message-row.grouped .message-bubble:hover .message-bubble-header {
+      display: flex;
+    }
+    .message-row.grouped .message-bubble {
+      padding-top: 0;
+    }
+
+    /* Mobile tweaks */
+    @media (max-width: 640px) {
+      .messages { padding: 12px 12px 4px; }
+      .input-area { padding: 0 10px 12px; }
+      .channel-header { padding: 0 12px; }
+    }
   </style>
 </head>
 <body class="theme-dark">
@@ -4325,7 +4521,7 @@
       <div class="main-column">
         <section class="channel-header">
           <div class="channel-info">
-            <div class="channel-name"># general</div>
+            <div class="channel-name">general</div>
             <div class="channel-desc">Drift text and images through the event horizon.</div>
           </div>
           <div class="channel-meta" id="presenceLabel"></div>
@@ -4384,9 +4580,8 @@
                 class="attach-input"
                 accept=".png,.jpg,.jpeg,.gif,image/png,image/jpeg,image/gif"
               />
-              <button class="btn btn-ghost" id="attachBtn" type="button">
-                <span class="attach-btn-label">Attach image</span>
-                <span class="attach-btn-label-short">📎</span>
+              <button class="btn btn-ghost" id="attachBtn" type="button" title="Attach image" style="padding:8px 10px;border-radius:0;border:none;border-right:none;background:transparent;font-size:16px;align-self:stretch;display:flex;align-items:center;">
+                📎
               </button>
             </div>
             <div class="input-box">
@@ -4398,7 +4593,9 @@
                 placeholder="Message #general"
               ></textarea>
             </div>
-            <button class="btn btn-primary" id="sendBtn">SEND</button>
+            <button class="btn btn-primary" id="sendBtn" title="Send message" style="border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;letter-spacing:0.03em;align-self:flex-end;margin:6px 8px 6px 0;flex-shrink:0;">
+                ➤ Send
+              </button>
           </div>
           <div class="input-hint">
             <span>Press Enter to send • PNG, JPEG, GIF supported</span>
@@ -4407,7 +4604,7 @@
         </section>
       </div>
 
-      <aside class="sidebar-column">
+      <aside class="sidebar-column" style="background: color-mix(in srgb, var(--bg-subtle) 60%, var(--bg-surface));">
         <div class="sidebar-card">
           <div class="sidebar-header">
             <span class="sidebar-title">Members</span>
