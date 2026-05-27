@@ -5640,7 +5640,7 @@
 
                     <div class="changelog-entry">
             <div class="changelog-version">
-              <span class="changelog-tag" style="background:linear-gradient"(135deg,#ff8a3d,#ffca69,#8aa9ff,#5b4bff);color:#050712;">v1.0</span>
+              <span class="changelog-tag" style="background:linear-gradient(135deg,#ff8a3d,#ffca69,#8aa9ff,#5b4bff);color:#050712;">v1.0</span>
               <span class="changelog-date">April 28, 2026</span>
             </div>
             <div class="changelog-title">🎉 v1.0 Release</div>
@@ -6085,7 +6085,7 @@
         userLabel.appendChild(createAdminBadge(isSuper));
       }
 
-      userLabelSub.textContent = "Click to edit profile";
+      if (userLabelSub) userLabelSub.textContent = "Click to edit profile";
       authBtn.textContent = "Sign out";
       setAvatarElement(
         userAvatar,
@@ -6101,7 +6101,7 @@
       currentUser = null;
       currentProfile = { displayName: null, photoData: null, isAdmin: false, timeoutUntil: null };
       userLabel.textContent = "Not signed in";
-      userLabelSub.textContent = "Click to edit profile";
+      if (userLabelSub) userLabelSub.textContent = "Click to edit profile";
       authBtn.textContent = "Sign in";
       statusBanner.textContent = "Sign in to start chatting.";
       inputStatePill.textContent = "Signed out";
@@ -6750,7 +6750,10 @@
       // First load: hide skeleton, do full reconcile, scroll to bottom
       const isFirstLoad = !firstLoadDone;
       firstLoadDone = true;
-      if (chatSkeleton) chatSkeleton.remove();
+      // Always remove skeleton by ID — the cached `chatSkeleton` reference
+      // becomes a detached node after setSignedOutUI clears innerHTML.
+      const _sk = document.getElementById('chatSkeleton');
+      if (_sk) _sk.remove();
 
       // Update messageDataMap
       snapshot.docs.forEach(doc => { messageDataMap[doc.id] = { id: doc.id, ...doc.data() }; });
