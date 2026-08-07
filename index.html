@@ -142,8 +142,8 @@
 
   /* ---------- App shell ---------- */
   #app { display:none; height:100%; }
-  #app.ready { display:grid; grid-template-columns: 240px 1fr 220px; }
-  .sidebar { background: var(--bg-alt); border-right: 1px solid var(--border); display:flex; flex-direction:column; min-width:0; }
+  #app.ready { display:grid; grid-template-columns: 240px 1fr 220px; grid-template-rows: 1fr; }
+  .sidebar { background: var(--bg-alt); border-right: 1px solid var(--border); display:flex; flex-direction:column; min-width:0; min-height:0; }
   .sidebar-header { padding: 18px 16px; display:flex; align-items:center; gap:8px; border-bottom: 1px solid var(--border); }
   .sidebar-header .bubble-mark { color: var(--accent); }
   .sidebar-header .logo-word { font-weight:800; font-size:16px; letter-spacing:-0.01em; }
@@ -158,6 +158,29 @@
   .channel-item:active { transform: translateX(2px) scale(.98); }
   .channel-item.active { background: var(--accent-soft); color: var(--text); }
   .channel-item .hash { opacity:.6; font-weight:700; }
+  .dm-item-avatar { width:20px; height:20px; border-radius:50%; flex-shrink:0; }
+  .dm-item-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .convo-header { display:flex; align-items:center; gap:10px; min-width:0; }
+  .convo-header .dm-header-avatar { width:24px; height:24px; border-radius:50%; flex-shrink:0; }
+  .convo-header .chan-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .convo-header .group-gear { background:none; border:none; color: var(--text-muted); padding:4px; border-radius:6px; margin-left:2px; transition: background .15s ease, color .15s ease, transform .1s ease; flex-shrink:0; }
+  .convo-header .group-gear:hover { background: var(--bg-input); color: var(--text); transform: rotate(45deg); }
+
+  .dm-picker-list { max-height:220px; overflow-y:auto; margin-top:8px; border:1px solid var(--border); border-radius:10px; }
+  .dm-picker-row { display:flex; align-items:center; gap:10px; padding:9px 12px; cursor:pointer; transition: background .12s ease; }
+  .dm-picker-row:hover { background: var(--bg-input); }
+  .dm-picker-row.selected { background: var(--accent-soft); }
+  .dm-picker-row .avatar { width:28px; height:28px; font-size:11px; flex-shrink:0; }
+  .dm-picker-row .dm-picker-name { flex:1; font-size:13.5px; }
+  .dm-picker-row .dm-picker-check { width:16px; height:16px; border-radius:5px; border:1.5px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--accent-contrast); }
+  .dm-picker-row.selected .dm-picker-check { background: var(--accent); border-color: var(--accent); }
+  .dm-picker-empty { padding:16px; text-align:center; color: var(--text-muted); font-size:13px; }
+
+  .context-menu { display:none; position:fixed; z-index:400; background: var(--bg-elevated); border:1px solid var(--border); border-radius:10px; box-shadow:0 12px 30px var(--shadow); padding:6px; min-width:160px; animation: scaleIn .15s cubic-bezier(.22,1,.36,1) both; }
+  .context-menu.open { display:block; }
+  .context-menu button { width:100%; text-align:left; background:none; border:none; color: var(--text); font-size:13.5px; padding:8px 10px; border-radius:7px; transition: background .12s ease; }
+  .context-menu button:hover { background: var(--bg-input); }
   .games-tab { display:flex; align-items:center; gap:8px; padding:8px 10px; margin: 0 8px; border-radius:8px; color: var(--text-muted); font-size:14px; opacity:.55; cursor:default; }
   .badge-soon { font-size:9px; text-transform:uppercase; letter-spacing:.05em; background: var(--bg-elevated); border:1px solid var(--border); padding:2px 6px; border-radius:20px; margin-left:auto; }
 
@@ -174,7 +197,7 @@
   .crown { color: var(--accent); font-size:12px; }
 
   /* ---------- Main pane ---------- */
-  .main { display:flex; flex-direction:column; min-width:0; }
+  .main { display:flex; flex-direction:column; min-width:0; min-height:0; }
   .topbar { height:56px; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 18px; gap:10px; }
   .topbar .hash { color: var(--text-muted); font-weight:700; }
   .topbar .chan-name { font-weight:700; font-size:15px; }
@@ -186,8 +209,8 @@
   .theme-opt:hover { background: var(--bg-input); }
   .theme-opt .dot { width:10px; height:10px; border-radius:50%; }
 
-  .messages { flex:1; overflow-y:auto; padding: 18px 22px; display:flex; flex-direction:column; gap:2px; }
-  .msg-row { display:flex; gap:12px; padding:6px 8px; border-radius:10px; animation: fadeSlideUp .28s cubic-bezier(.22,1,.36,1) both; transition: background .15s ease; position:relative; }
+  .messages { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; padding: 18px 22px; display:flex; flex-direction:column; gap:2px; }
+  .msg-row { display:flex; gap:12px; padding:6px 8px; border-radius:10px; min-width:0; animation: fadeSlideUp .28s cubic-bezier(.22,1,.36,1) both; transition: background .15s ease; position:relative; }
   .msg-row:hover { background: var(--bg-alt); }
   .msg-row .avatar { width:38px; height:38px; font-size:14px; margin-top:2px; transition: transform .15s ease; }
   .msg-row:hover .avatar { transform: scale(1.05); }
@@ -196,8 +219,8 @@
   .msg-row.grouped:hover .time-gutter { opacity:1; }
   .msg-del.grouped-del { position:absolute; top:2px; right:8px; margin-left:0; }
   .msg-body { min-width:0; flex:1; }
-  .msg-head { display:flex; align-items:baseline; gap:8px; }
-  .msg-uname { font-weight:700; font-size:14px; }
+  .msg-head { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; min-width:0; }
+  .msg-uname { font-weight:700; font-size:14px; overflow-wrap:anywhere; }
   .msg-uname.admin { color: var(--accent); }
   .msg-uname.clickable { cursor:pointer; }
   .msg-uname.clickable:hover { text-decoration: underline; }
@@ -223,7 +246,7 @@
   .img-preview-wrap button { background:none; border:none; color:var(--text-muted); font-size:12px; }
 
   /* ---------- Members ---------- */
-  .members { background: var(--bg-alt); border-left:1px solid var(--border); overflow-y:auto; padding: 16px 12px; }
+  .members { background: var(--bg-alt); border-left:1px solid var(--border); overflow-y:auto; overflow-x:hidden; min-height:0; padding: 16px 12px; }
   .members h3 { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color: var(--text-muted); margin: 6px 8px 10px; }
   .member-row { display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:8px; transition: background .15s ease, transform .1s ease; cursor:pointer; }
   .member-row:hover { background: var(--bg-elevated); transform: translateX(2px); }
@@ -302,15 +325,11 @@
   .tt-grid input::placeholder { color: var(--text-muted); opacity:.5; }
   .tt-week-sep { border-left:2px solid var(--accent) !important; }
   .tt-paste-row { display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap; }
-
-  /* ---------- Context menu ---------- */
-  .ctx-menu { position:fixed; z-index:400; min-width:180px; background: var(--bg-elevated); border:1px solid var(--border); border-radius:12px; padding:6px; box-shadow: 0 14px 40px var(--shadow); animation: scaleIn .12s cubic-bezier(.22,1,.36,1) both; transform-origin: top left; }
-  .ctx-title { font-size:11px; color: var(--text-muted); padding:6px 10px 8px; border-bottom:1px solid var(--border); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .ctx-item { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px; font-size:13px; color: var(--text); cursor:pointer; }
-  .ctx-item:hover { background: var(--bg-input); }
-  .ctx-item.danger { color: var(--danger); }
-  .member-row.blocked { opacity:.45; }
-  .member-tag { font-size:9px; text-transform:uppercase; letter-spacing:.05em; color: var(--text-muted); border:1px solid var(--border); border-radius:20px; padding:1px 5px; margin-left:4px; }
+  .tt-img-drop { border:2px dashed var(--border); border-radius:10px; padding:20px 16px; text-align:center; color: var(--text-muted); font-size:12.5px; margin-top:10px; cursor:pointer; transition: border-color .15s ease, background .15s ease, opacity .15s ease; }
+  .tt-img-drop:hover, .tt-img-drop.drag { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+  .tt-img-drop.busy { opacity:.6; pointer-events:none; }
+  .tt-divider { display:flex; align-items:center; gap:10px; color: var(--text-muted); font-size:11px; margin: 18px 0 4px; text-transform:uppercase; letter-spacing:.06em; }
+  .tt-divider::before, .tt-divider::after { content:''; height:1px; background: var(--border); flex:1; }
 
   #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); align-items:center; justify-content:center; z-index:200; cursor:zoom-out; animation: fadeIn .2s ease both; }
   #lightbox.open { display:flex; }
@@ -381,9 +400,8 @@
     <div class="section-label">Channels <button id="add-channel-btn" title="Create channel">+</button></div>
     <ul class="channel-list" id="channel-list"></ul>
 
-    <div class="section-label" style="margin-top:6px;">Direct Messages</div>
-    <ul class="channel-list" id="dm-list"></ul>
-    <div class="tt-hint" id="dm-empty" style="padding:0 16px;">Right-click a member to start a DM.</div>
+    <div class="section-label" style="margin-top:6px;">Direct Messages <button id="add-dm-btn" title="New direct message">+</button></div>
+    <ul class="channel-list dm-list" id="dm-list"></ul>
 
     <div class="section-label" style="margin-top:6px;">Games</div>
     <div class="games-tab"><span>🎮</span> Multiplayer Games <span class="badge-soon">Soon</span></div>
@@ -404,7 +422,9 @@
   <main class="main">
     <div class="topbar">
       <button class="icon-btn" id="mobile-sidebar-toggle" style="display:none;">☰</button>
-      <span class="hash">#</span><span class="chan-name" id="chan-name">general</span>
+      <div class="convo-header" id="convo-header">
+        <span class="hash">#</span><span class="chan-name" id="chan-name">general</span>
+      </div>
       <div class="topbar-spacer"></div>
       <div class="theme-picker">
         <button class="icon-btn" id="theme-btn" title="Theme">🎨</button>
@@ -481,7 +501,16 @@
           </select>
           <div class="tt-hint">This anchors your two-week rotation — set it correctly once and future weeks alternate automatically.</div>
 
-          <label for="tt-paste" style="margin-top:18px;">Paste as text</label>
+          <div class="settings-section-title" style="margin-top:18px;">Scan from a screenshot</div>
+          <div class="tt-img-drop" id="tt-img-drop" tabindex="0" role="button">
+            📷 Click to upload, drag a file here, or paste (Ctrl/Cmd+V) a screenshot of your timetable
+          </div>
+          <input type="file" id="tt-img-file" accept="image/*" style="display:none;" />
+          <div class="tt-hint">Reads the image using OpenRouter's free tier, with your own free API key — entered once and stored only in this browser — <button type="button" class="link-btn" id="tt-api-key-btn">set API key</button>.</div>
+
+          <div class="tt-divider"><span>or</span></div>
+
+          <label for="tt-paste">Paste as text</label>
           <textarea id="tt-paste" rows="4" placeholder="Paste 7 tab-separated rows, one per period, in order: Morning Registration, Period 1–6. Each row needs 10 columns: Week 1 Mon–Fri, then Week 2 Mon–Fri. (Copy straight from a spreadsheet version of your timetable.)"></textarea>
           <div class="tt-paste-row">
             <button class="btn" id="tt-parse-btn" type="button">Fill grid from paste</button>
@@ -499,6 +528,27 @@
     <div class="modal-actions">
       <button class="btn" id="settings-cancel">Cancel</button>
       <button class="btn primary" id="settings-save">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== OpenRouter API key modal (for timetable image scan) ===== -->
+<div class="modal-backdrop" id="apikey-backdrop">
+  <div class="modal" style="max-width:420px;">
+    <h2>OpenRouter API key</h2>
+    <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0 0 4px;">
+      Used only in this browser to let a free vision model read your timetable screenshot. It's stored in this browser's local storage and sent directly to OpenRouter's API when you scan an image — never anywhere else. Because it's used straight from the browser, anyone with access to dev tools on this device could see it, so only do this on a device you trust. Get a free key (no credit card needed) at
+      <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.
+    </p>
+    <label for="apikey-input">API key</label>
+    <input type="password" id="apikey-input" placeholder="sk-or-v1-…" autocomplete="off" />
+    <div class="modal-err" id="apikey-err"></div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <button class="btn danger-ghost" id="apikey-clear" type="button">Clear saved key</button>
+      <div style="display:flex; gap:10px;">
+        <button class="btn" id="apikey-cancel" type="button">Cancel</button>
+        <button class="btn primary" id="apikey-save" type="button">Save</button>
+      </div>
     </div>
   </div>
 </div>
@@ -534,6 +584,49 @@
       <button class="btn primary" id="channel-save">Create</button>
     </div>
   </div>
+</div>
+
+<!-- ===== New DM modal ===== -->
+<div class="modal-backdrop" id="dm-backdrop">
+  <div class="modal">
+    <h2>New message</h2>
+    <label for="dm-search">To</label>
+    <input type="text" id="dm-search" placeholder="Search members…" autocomplete="off" />
+    <div class="dm-picker-list" id="dm-picker-list"></div>
+    <div id="dm-group-name-wrap" style="display:none;">
+      <label for="dm-group-name">Group name <span style="font-weight:400; color:var(--text-muted);">(optional)</span></label>
+      <input type="text" id="dm-group-name" maxlength="60" placeholder="e.g. Group project" />
+    </div>
+    <div class="modal-err" id="dm-err"></div>
+    <div class="modal-actions">
+      <button class="btn" id="dm-cancel">Cancel</button>
+      <button class="btn primary" id="dm-create" disabled>Start</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Group DM settings modal (group DMs only) ===== -->
+<div class="modal-backdrop" id="group-settings-backdrop">
+  <div class="modal">
+    <h2>Group settings</h2>
+    <div class="modal-avatar-row">
+      <img class="avatar" id="group-settings-avatar" style="width:60px;height:60px;" />
+      <button class="upload-btn" id="group-settings-upload-btn">Change photo</button>
+      <input type="file" id="group-settings-file-input" accept="image/*" style="display:none;" />
+    </div>
+    <label for="group-settings-name">Group name</label>
+    <input type="text" id="group-settings-name" maxlength="60" />
+    <div class="modal-err" id="group-settings-err"></div>
+    <div class="modal-actions">
+      <button class="btn" id="group-settings-cancel">Cancel</button>
+      <button class="btn primary" id="group-settings-save">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Right-click context menu (member list) ===== -->
+<div class="context-menu" id="member-context-menu">
+  <button id="ctx-create-dm">💬 Create DM</button>
 </div>
 
 <div id="lightbox"><img id="lightbox-img" /></div>
@@ -679,6 +772,78 @@ function currentWeekIndexFor(timetable, now) {
   const weeksDiff = Math.round((thisMonday - anchorMonday) / (7 * 86400000));
   return (((timetable.weekAnchorIndex || 0) + weeksDiff) % 2 + 2) % 2;
 }
+const TT_KEY_STORAGE = 'yapp-openrouter-key';
+// OpenRouter's free-model roster changes over time — if this stops
+// working, check openrouter.ai/models for a current free ":free" model
+// with image input and swap it in here.
+const TT_SCAN_MODEL = 'google/gemma-4-31b-it:free';
+function buildTimetablePrompt() {
+  const rows = PERIODS.map(p => `- "${p.label}" (${formatTimeRange(p.start, p.end)})`).join('\n');
+  return `This image is a school timetable. Convert it into a fixed grid.
+
+The grid has exactly these 7 rows, in this order:
+${rows}
+
+Each row has exactly 10 columns: Week 1 Monday, Tuesday, Wednesday, Thursday, Friday, then Week 2 Monday, Tuesday, Wednesday, Thursday, Friday — left to right, matching the order the day columns appear in the image.
+
+For each cell, extract just the subject name shown for that period on that day (a short class code in parentheses is fine, but leave out room numbers and teacher names). If a period from the list above isn't shown in the image, or a cell is blank, use an empty string "" for it. If the image only shows a single week (5 day columns, not 10), put that week's data in the first 5 columns (Week 1) and use "" for all of Week 2's columns.
+
+Respond with ONLY raw JSON in exactly this shape, no markdown code fences, no explanation:
+{"grid": [["","","","","","","","","",""], ... one array per row listed above, 7 arrays total, each with exactly 10 strings]}`;
+}
+async function parseTimetableImage(dataUrl) {
+  const apiKey = localStorage.getItem(TT_KEY_STORAGE);
+  if (!apiKey) { toast('Add your free OpenRouter API key first.', 'info'); openApiKeyModal(); return; }
+  const dropEl = $('tt-img-drop');
+  const originalHtml = dropEl.innerHTML;
+  dropEl.classList.add('busy');
+  dropEl.textContent = '⏳ Reading your timetable…';
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': location.origin || 'https://yappathon.chat',
+        'X-Title': 'Yappathon'
+      },
+      body: JSON.stringify({
+        model: TT_SCAN_MODEL,
+        max_tokens: 2000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: buildTimetablePrompt() },
+            { type: 'image_url', image_url: { url: dataUrl } }
+          ]
+        }]
+      })
+    });
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error((errBody && errBody.error && errBody.error.message) || `Request failed (${res.status}).`);
+    }
+    const data = await res.json();
+    const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    if (!text) throw new Error("Didn't get a readable response back.");
+    const cleaned = String(text).replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    if (!parsed || !Array.isArray(parsed.grid)) throw new Error('Unexpected response format.');
+    ttGrid = PERIODS.map((_, ri) => {
+      const row = Array.isArray(parsed.grid[ri]) ? parsed.grid[ri] : [];
+      return new Array(10).fill('').map((v, ci) => (typeof row[ci] === 'string' ? row[ci].slice(0, 60) : ''));
+    });
+    renderTtGridTable();
+    toast('Timetable read — check the grid below and adjust anything that looks off.', 'info');
+  } catch (err) {
+    console.error(err);
+    toast("Couldn't read that image: " + (err.message || 'unknown error') + ". You can still paste it as text below, or fill the grid in by hand.");
+  } finally {
+    dropEl.classList.remove('busy');
+    dropEl.innerHTML = originalHtml;
+  }
+}
+
 function computeCurrentClass(timetable, now) {
   now = now || new Date();
   if (!timetable || !timetable.enabled || !timetable.grid) return null;
@@ -708,11 +873,14 @@ let profile = null;       // firestore users/{uid} doc data
 let pendingSignupUsername = null; // staged username during email/password signup
 let authMode = 'signin';  // 'signin' | 'signup'
 let userCache = {};        // uid -> profile, live-updated
-let channelCache = {};     // channel id -> channel doc (includes DMs)
+let currentConvoType = 'channel'; // 'channel' | 'dm'
 let currentChannel = 'general';
+let currentDmId = null;
+let dmCache = {};          // dmId -> dm doc data, live-updated
 let unsubMessages = null;
 let unsubChannels = null;
 let unsubMembers = null;
+let unsubDms = null;
 let pendingImage = null;   // data URL staged for next message
 
 const DEFAULT_CHANNELS = ['general', 'random'];
@@ -857,6 +1025,7 @@ onAuthStateChanged(auth, async (user) => {
     if (unsubMessages) unsubMessages();
     if (unsubChannels) unsubChannels();
     if (unsubMembers) unsubMembers();
+    if (unsubDms) unsubDms();
     return;
   }
   currentUser = user;
@@ -869,6 +1038,7 @@ onAuthStateChanged(auth, async (user) => {
     listenProfile(user.uid);
     listenChannels();
     listenMembers();
+    listenDms();
     switchChannel('general');
     heartbeat();
     setInterval(heartbeat, 25000);
@@ -931,93 +1101,119 @@ function listenProfile(uid) {
     $('me-role').textContent = profile.role === 'admin' ? 'Admin' : 'Member';
     renderAvatar($('me-avatar'), profile);
     renderAvatar($('settings-avatar'), profile);
-    renderChannelLists();
-    renderMembers(Object.values(userCache));
   });
 }
 
-// ---------- channels & DMs ----------
-function dmIdFor(uidA, uidB) {
-  return 'dm_' + [uidA, uidB].sort().join('_');
-}
-function dmPartnerUid(channel) {
-  if (!channel || !Array.isArray(channel.members) || !profile) return null;
-  return channel.members.find(uid => uid !== profile.uid) || profile.uid;
-}
-function dmTitle(channel) {
-  const other = dmPartnerUid(channel);
-  const u = other && userCache[other];
-  return (u && u.username) || (channel.memberNames && channel.memberNames[other]) || 'Direct message';
-}
-
+// ---------- channels ----------
 function listenChannels() {
   const q = query(collection(db, 'channels'), orderBy('createdAt', 'asc'));
   unsubChannels = onSnapshot(q, (snap) => {
-    channelCache = {};
-    snap.forEach(d => { channelCache[d.id] = { id: d.id, ...d.data() }; });
-    renderChannelLists();
+    const list = $('channel-list');
+    list.innerHTML = '';
+    snap.forEach(d => {
+      const name = d.id;
+      const li = document.createElement('li');
+      li.className = 'channel-item' + (currentConvoType === 'channel' && name === currentChannel ? ' active' : '');
+      li.innerHTML = `<span class="hash">#</span><span>${escapeHtml(name)}</span>`;
+      li.addEventListener('click', () => switchChannel(name));
+      list.appendChild(li);
+    });
     // admin-only create button visibility
     $('add-channel-btn').style.display = (profile && profile.role === 'admin') ? '' : 'none';
   }, handleFirestoreError('channels'));
 }
 
-function renderChannelLists() {
-  const list = $('channel-list');
-  const dmList = $('dm-list');
-  list.innerHTML = '';
-  dmList.innerHTML = '';
-  let dmCount = 0;
-  Object.values(channelCache).forEach(c => {
-    const isDm = c.type === 'dm';
-    if (isDm && !(profile && Array.isArray(c.members) && c.members.includes(profile.uid))) return;
-    const li = document.createElement('li');
-    li.className = 'channel-item' + (c.id === currentChannel ? ' active' : '');
-    if (isDm) {
-      dmCount++;
-      li.innerHTML = `<span class="hash">@</span><span>${escapeHtml(dmTitle(c))}</span>`;
-    } else {
-      li.innerHTML = `<span class="hash">#</span><span>${escapeHtml(c.id)}</span>`;
-    }
-    li.addEventListener('click', () => switchChannel(c.id));
-    (isDm ? dmList : list).appendChild(li);
-  });
-  $('dm-empty').style.display = dmCount ? 'none' : '';
+// ---------- direct messages ----------
+function dmOtherUid(d) {
+  return (d.members || []).find(u => u !== (profile && profile.uid));
+}
+function dmDisplayUser(d) {
+  // For a 1-1 DM, returns a user-shaped object (for renderAvatar / naming) for
+  // the OTHER member. For a group, returns a synthetic user-shaped object
+  // built from the group's own name/photo.
+  if (d.type === 'group') {
+    return { uid: d.id, username: d.name || 'Group', photoBase64: d.photoBase64 || null };
+  }
+  const otherUid = dmOtherUid(d);
+  return userCache[otherUid] || { uid: otherUid, username: (d.memberNames && d.memberNames[otherUid]) || 'Someone', photoBase64: null };
 }
 
-async function openDmWith(uid) {
-  if (!profile) return;
-  if (uid === profile.uid) { toast("You can't DM yourself.", 'info'); return; }
-  const other = userCache[uid];
-  const id = dmIdFor(profile.uid, uid);
-  try {
-    const ref = doc(db, 'channels', id);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) {
-      await setDoc(ref, {
-        type: 'dm',
-        members: [profile.uid, uid].sort(),
-        memberNames: { [profile.uid]: profile.username, [uid]: (other && other.username) || 'Member' },
-        createdAt: serverTimestamp()
-      });
-      toast(`DM with ${(other && other.username) || 'member'} created.`, 'info');
+function listenDms() {
+  const q = query(collection(db, 'dms'), where('members', 'array-contains', currentUser.uid));
+  unsubDms = onSnapshot(q, (snap) => {
+    dmCache = {};
+    const list = [];
+    snap.forEach(d => { const data = { id: d.id, ...d.data() }; dmCache[d.id] = data; list.push(data); });
+    renderDmList(list);
+    if (currentConvoType === 'dm' && currentDmId) renderConvoHeader(); // keep header fresh (e.g. group rename)
+  }, handleFirestoreError('direct messages'));
+}
+
+function renderDmList(list) {
+  list.sort((a, b) => dmDisplayUser(a).username.localeCompare(dmDisplayUser(b).username));
+  const wrap = $('dm-list');
+  wrap.innerHTML = '';
+  list.forEach(d => {
+    const u = dmDisplayUser(d);
+    const li = document.createElement('li');
+    li.className = 'channel-item' + (currentConvoType === 'dm' && currentDmId === d.id ? ' active' : '');
+    const img = document.createElement('img');
+    img.className = 'dm-item-avatar';
+    renderAvatar(img, u);
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'dm-item-name';
+    nameSpan.textContent = u.username;
+    li.appendChild(img);
+    li.appendChild(nameSpan);
+    li.addEventListener('click', () => switchDm(d.id));
+    wrap.appendChild(li);
+  });
+}
+
+function renderConvoHeader() {
+  const header = $('convo-header');
+  if (currentConvoType === 'dm') {
+    const d = dmCache[currentDmId];
+    if (!d) return;
+    const u = dmDisplayUser(d);
+    header.innerHTML = '';
+    const img = document.createElement('img');
+    img.className = 'dm-header-avatar';
+    renderAvatar(img, u);
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'chan-name';
+    nameSpan.textContent = u.username;
+    header.appendChild(img);
+    header.appendChild(nameSpan);
+    if (d.type === 'group') {
+      const gear = document.createElement('button');
+      gear.className = 'group-gear';
+      gear.title = 'Group settings';
+      gear.textContent = '⚙️';
+      gear.addEventListener('click', () => openGroupSettings(d.id));
+      header.appendChild(gear);
     }
-    switchChannel(id);
-  } catch (e) {
-    toast("Couldn't create that DM.");
+  } else {
+    header.innerHTML = `<span class="hash">#</span><span class="chan-name" id="chan-name">${escapeHtml(currentChannel)}</span>`;
   }
 }
 
-function switchChannel(name) {
-  currentChannel = name;
-  const c = channelCache[name];
-  const isDm = c && c.type === 'dm';
-  const title = isDm ? dmTitle(c) : name;
-  $('chan-name').textContent = title;
-  document.querySelector('.topbar .hash').textContent = isDm ? '@' : '#';
-  $('msg-input').placeholder = isDm ? `Message @${title}` : `Message #${name}`;
-  renderChannelLists();
+// Both channels and DMs share the same message rendering/pagination logic —
+// this just points it at the right Firestore collection.
+function convoMessagesCollection() {
+  return currentConvoType === 'dm'
+    ? collection(db, 'dms', currentDmId, 'messages')
+    : collection(db, 'channels', currentChannel, 'messages');
+}
+function convoMessageDoc(id) {
+  return currentConvoType === 'dm'
+    ? doc(db, 'dms', currentDmId, 'messages', id)
+    : doc(db, 'channels', currentChannel, 'messages', id);
+}
+
+function listenConvoMessages() {
   if (unsubMessages) unsubMessages();
-  const q = query(collection(db, 'channels', name, 'messages'), orderBy('timestamp', 'asc'), limit(200));
+  const q = query(convoMessagesCollection(), orderBy('timestamp', 'asc'), limit(200));
   unsubMessages = onSnapshot(q, (snap) => {
     const wrap = $('messages');
     if (snap.empty) {
@@ -1028,11 +1224,8 @@ function switchChannel(name) {
     let lastDay = null;
     let lastMsg = null; // { uid, ts } of previous rendered message, for grouping
     const GROUP_WINDOW_MS = 5 * 60 * 1000;
-    let rendered = 0;
     snap.forEach(d => {
       const m = d.data();
-      if (isHidden(m.uid)) return;
-      rendered++;
       const ts = m.timestamp ? m.timestamp.toDate() : new Date();
       const dayKey = ts.toDateString();
       if (dayKey !== lastDay) {
@@ -1047,14 +1240,84 @@ function switchChannel(name) {
       wrap.appendChild(renderMessage(d.id, m, ts, grouped));
       lastMsg = { uid: m.uid, ts };
     });
-    if (!rendered) {
-      wrap.innerHTML = `<div class="empty-state">Nothing to show here — every message is from someone you've blocked or muted.</div>`;
-    }
     wrap.scrollTop = wrap.scrollHeight;
-  }, handleFirestoreError('messages'));
+  }, handleFirestoreError(currentConvoType === 'dm' ? 'messages' : 'messages'));
+}
+
+function switchChannel(name) {
+  currentConvoType = 'channel';
+  currentChannel = name;
+  currentDmId = null;
+  $('msg-input').placeholder = `Message #${name}`;
+  renderConvoHeader();
+  document.querySelectorAll('#channel-list .channel-item').forEach(el => {
+    el.classList.toggle('active', el.textContent.trim() === name);
+  });
+  document.querySelectorAll('#dm-list .channel-item').forEach(el => el.classList.remove('active'));
+  listenConvoMessages();
+}
+
+function switchDm(dmId) {
+  currentConvoType = 'dm';
+  currentDmId = dmId;
+  const d = dmCache[dmId];
+  const name = d ? dmDisplayUser(d).username : 'this conversation';
+  $('msg-input').placeholder = `Message ${name}`;
+  renderConvoHeader();
+  document.querySelectorAll('#channel-list .channel-item').forEach(el => el.classList.remove('active'));
+  renderDmList(Object.values(dmCache));
+  listenConvoMessages();
+}
+
+// Creates (or reuses) a DM/group DM and switches to it.
+// memberUids: uids to include besides yourself. groupName: optional, only
+// used when the result has 3+ members.
+async function openOrCreateDm(memberUids, groupName) {
+  if (!profile) return;
+  const allMembers = Array.from(new Set([profile.uid, ...memberUids]));
+  if (allMembers.length < 2) { toast('Pick at least one person to message.', 'info'); return; }
+
+  if (allMembers.length === 2) {
+    const sorted = [...allMembers].sort();
+    const dmId = 'dm_' + sorted[0] + '_' + sorted[1];
+    if (!dmCache[dmId]) {
+      const ref = doc(db, 'dms', dmId);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        const memberNames = {};
+        sorted.forEach(uid => { memberNames[uid] = (userCache[uid] && userCache[uid].username) || 'Someone'; });
+        try {
+          await setDoc(ref, { type: 'dm', members: sorted, memberNames, createdAt: serverTimestamp() });
+        } catch (e) {
+          toast("Couldn't start that conversation."); return;
+        }
+      }
+    }
+    switchDm(dmId);
+  } else {
+    const memberNames = {};
+    allMembers.forEach(uid => { memberNames[uid] = (userCache[uid] && userCache[uid].username) || 'Someone'; });
+    const fallbackName = allMembers.filter(u => u !== profile.uid)
+      .map(u => (userCache[u] && userCache[u].username) || '?').slice(0, 3).join(', ');
+    try {
+      const ref = await addDoc(collection(db, 'dms'), {
+        type: 'group',
+        members: allMembers,
+        memberNames,
+        name: (groupName && groupName.trim()) || fallbackName,
+        photoBase64: null,
+        createdBy: profile.uid,
+        createdAt: serverTimestamp()
+      });
+      switchDm(ref.id);
+    } catch (e) {
+      toast("Couldn't create that group.");
+    }
+  }
 }
 
 function renderMessage(id, m, ts, grouped) {
+
   const row = document.createElement('div');
   row.className = 'msg-row' + (grouped ? ' grouped' : '');
   const isAdmin = m.role === 'admin';
@@ -1072,12 +1335,6 @@ function renderMessage(id, m, ts, grouped) {
     renderAvatar(av, { uid: m.uid, username: m.username, photoBase64: m.photoBase64 });
     av.addEventListener('click', () => openProfile(m.uid));
     row.appendChild(av);
-  }
-  if (m.uid) {
-    row.addEventListener('contextmenu', (e) => {
-      if (e.target.closest('.msg-text') || e.target.closest('.msg-img')) return;
-      openMemberContextMenu(e, m.uid);
-    });
   }
 
   const body = document.createElement('div');
@@ -1116,7 +1373,7 @@ function renderMessage(id, m, ts, grouped) {
 }
 function deleteMessage(id) {
   if (!confirm('Delete this message? This can\'t be undone.')) return;
-  deleteDoc(doc(db, 'channels', currentChannel, 'messages', id)).catch(() => toast("Couldn't delete that message."));
+  deleteDoc(convoMessageDoc(id)).catch(() => toast("Couldn't delete that message."));
 }
 $('lightbox').addEventListener('click', () => $('lightbox').classList.remove('open'));
 
@@ -1158,12 +1415,6 @@ function listenMembers() {
   }, handleFirestoreError('members'));
   setInterval(() => renderMembers(Object.values(userCache)), 15000);
 }
-function makeTag(text) {
-  const el = document.createElement('span');
-  el.className = 'member-tag';
-  el.textContent = text;
-  return el;
-}
 function renderMembers(list) {
   const now = Date.now();
   list.sort((a,b) => (a.username||'').localeCompare(b.username||''));
@@ -1198,80 +1449,14 @@ function renderMembers(list) {
       clsEl.textContent = cls.subject ? `📘 ${cls.subject} · ${cls.period}` : `${cls.period} · free`;
       meta.appendChild(clsEl);
     }
-    if (isBlocked(u.uid)) { row.classList.add('blocked'); name.appendChild(makeTag('Blocked')); }
-    else if (isMuted(u.uid)) { name.appendChild(makeTag('Muted')); }
     row.appendChild(meta);
     row.addEventListener('click', () => openProfile(u.uid));
-    row.addEventListener('contextmenu', (e) => openMemberContextMenu(e, u.uid));
+    row.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      openMemberContextMenu(e.clientX, e.clientY, u.uid);
+    });
     wrap.appendChild(row);
   });
-}
-
-// ---------- block / mute ----------
-function isBlocked(uid) { return !!(profile && Array.isArray(profile.blocked) && profile.blocked.includes(uid)); }
-function isMuted(uid) { return !!(profile && Array.isArray(profile.muted) && profile.muted.includes(uid)); }
-function isHidden(uid) { return isBlocked(uid) || isMuted(uid); }
-
-async function toggleListMembership(field, uid) {
-  if (!profile) return;
-  const current = Array.isArray(profile[field]) ? profile[field] : [];
-  const next = current.includes(uid) ? current.filter(x => x !== uid) : current.concat(uid);
-  try {
-    await updateDoc(doc(db, 'users', profile.uid), { [field]: next });
-    profile = { ...profile, [field]: next };
-    renderMembers(Object.values(userCache));
-    switchChannel(currentChannel);
-  } catch (e) {
-    toast("Couldn't save that change.");
-  }
-}
-
-// ---------- member context menu ----------
-let ctxMenuEl = null;
-function closeCtxMenu() {
-  if (ctxMenuEl) { ctxMenuEl.remove(); ctxMenuEl = null; }
-}
-document.addEventListener('click', closeCtxMenu);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCtxMenu(); });
-window.addEventListener('resize', closeCtxMenu);
-
-function openMemberContextMenu(e, uid) {
-  e.preventDefault();
-  closeCtxMenu();
-  const u = userCache[uid];
-  if (!u) return;
-  const isSelf = profile && uid === profile.uid;
-  const items = [];
-  items.push({ label: '👤 View profile', onClick: () => openProfile(uid) });
-  if (!isSelf) {
-    const existing = profile && channelCache[dmIdFor(profile.uid, uid)];
-    items.push({ label: existing ? '💬 Open DM' : '💬 Create DM', onClick: () => openDmWith(uid) });
-    items.push({ label: isMuted(uid) ? '🔊 Unmute' : '🔇 Mute', onClick: () => toggleListMembership('muted', uid) });
-    items.push({ label: isBlocked(uid) ? '✓ Unblock' : '🚫 Block', danger: !isBlocked(uid), onClick: () => toggleListMembership('blocked', uid) });
-  }
-
-  const menu = document.createElement('div');
-  menu.className = 'ctx-menu';
-  const title = document.createElement('div');
-  title.className = 'ctx-title';
-  title.textContent = u.username || 'Member';
-  menu.appendChild(title);
-  items.forEach(it => {
-    const el = document.createElement('div');
-    el.className = 'ctx-item' + (it.danger ? ' danger' : '');
-    el.textContent = it.label;
-    el.addEventListener('click', (ev) => { ev.stopPropagation(); closeCtxMenu(); it.onClick(); });
-    menu.appendChild(el);
-  });
-  menu.style.left = '0px';
-  menu.style.top = '0px';
-  document.body.appendChild(menu);
-  const rect = menu.getBoundingClientRect();
-  const x = Math.min(e.clientX, window.innerWidth - rect.width - 8);
-  const y = Math.min(e.clientY, window.innerHeight - rect.height - 8);
-  menu.style.left = Math.max(8, x) + 'px';
-  menu.style.top = Math.max(8, y) + 'px';
-  ctxMenuEl = menu;
 }
 
 // ---------- member profile popup ----------
@@ -1320,6 +1505,128 @@ function openProfile(uid) {
 $('profile-close').addEventListener('click', () => $('profile-backdrop').classList.remove('open'));
 $('profile-backdrop').addEventListener('click', (e) => { if (e.target.id === 'profile-backdrop') $('profile-backdrop').classList.remove('open'); });
 
+// ---------- member right-click context menu ----------
+let ctxTargetUid = null;
+function openMemberContextMenu(x, y, uid) {
+  ctxTargetUid = uid;
+  const menu = $('member-context-menu');
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  menu.classList.add('open');
+}
+function closeMemberContextMenu() {
+  $('member-context-menu').classList.remove('open');
+  ctxTargetUid = null;
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#member-context-menu')) closeMemberContextMenu();
+});
+document.addEventListener('scroll', closeMemberContextMenu, true);
+$('ctx-create-dm').addEventListener('click', () => {
+  if (ctxTargetUid) openOrCreateDm([ctxTargetUid]);
+  closeMemberContextMenu();
+});
+
+// ---------- new DM modal ----------
+let dmSelected = new Set();
+function openNewDmModal() {
+  dmSelected = new Set();
+  $('dm-search').value = '';
+  $('dm-group-name').value = '';
+  $('dm-group-name-wrap').style.display = 'none';
+  $('dm-err').style.display = 'none';
+  $('dm-create').disabled = true;
+  renderDmPickerList('');
+  $('dm-backdrop').classList.add('open');
+  $('dm-search').focus();
+}
+function renderDmPickerList(filter) {
+  const wrap = $('dm-picker-list');
+  wrap.innerHTML = '';
+  const f = filter.trim().toLowerCase();
+  const others = Object.values(userCache)
+    .filter(u => profile && u.uid !== profile.uid)
+    .filter(u => !f || (u.username || '').toLowerCase().includes(f))
+    .sort((a, b) => (a.username || '').localeCompare(b.username || ''));
+  if (!others.length) {
+    wrap.innerHTML = `<div class="dm-picker-empty">No members found.</div>`;
+    return;
+  }
+  others.forEach(u => {
+    const row = document.createElement('div');
+    row.className = 'dm-picker-row' + (dmSelected.has(u.uid) ? ' selected' : '');
+    const img = document.createElement('img');
+    img.className = 'avatar';
+    renderAvatar(img, u);
+    const name = document.createElement('div');
+    name.className = 'dm-picker-name';
+    name.textContent = u.username;
+    const check = document.createElement('div');
+    check.className = 'dm-picker-check';
+    check.textContent = dmSelected.has(u.uid) ? '✓' : '';
+    row.appendChild(img); row.appendChild(name); row.appendChild(check);
+    row.addEventListener('click', () => {
+      if (dmSelected.has(u.uid)) dmSelected.delete(u.uid); else dmSelected.add(u.uid);
+      $('dm-group-name-wrap').style.display = dmSelected.size > 1 ? '' : 'none';
+      $('dm-create').disabled = dmSelected.size === 0;
+      renderDmPickerList($('dm-search').value);
+    });
+    wrap.appendChild(row);
+  });
+}
+$('add-dm-btn').addEventListener('click', openNewDmModal);
+$('dm-search').addEventListener('input', () => renderDmPickerList($('dm-search').value));
+$('dm-cancel').addEventListener('click', () => $('dm-backdrop').classList.remove('open'));
+$('dm-create').addEventListener('click', async () => {
+  if (!dmSelected.size) return;
+  $('dm-create').disabled = true;
+  await openOrCreateDm(Array.from(dmSelected), $('dm-group-name').value);
+  $('dm-create').disabled = false;
+  $('dm-backdrop').classList.remove('open');
+});
+
+// ---------- group DM settings modal ----------
+let stagedGroupAvatar = null;
+function openGroupSettings(dmId) {
+  const d = dmCache[dmId];
+  if (!d || d.type !== 'group') return;
+  stagedGroupAvatar = null;
+  $('group-settings-name').value = d.name || '';
+  renderAvatar($('group-settings-avatar'), dmDisplayUser(d));
+  $('group-settings-err').style.display = 'none';
+  $('group-settings-backdrop').dataset.dmId = dmId;
+  $('group-settings-backdrop').classList.add('open');
+}
+$('group-settings-cancel').addEventListener('click', () => $('group-settings-backdrop').classList.remove('open'));
+$('group-settings-upload-btn').addEventListener('click', () => $('group-settings-file-input').click());
+$('group-settings-file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const dataUrl = await resizeImage(file, 220, 0.85);
+    stagedGroupAvatar = dataUrl;
+    $('group-settings-avatar').src = dataUrl;
+  } catch (err) { toast(err.message); }
+  e.target.value = '';
+});
+$('group-settings-save').addEventListener('click', async () => {
+  const dmId = $('group-settings-backdrop').dataset.dmId;
+  const name = $('group-settings-name').value.trim();
+  const err = $('group-settings-err');
+  if (name.length < 1) { err.textContent = 'Give the group a name.'; err.style.display = 'block'; return; }
+  if (name.length > 60) { err.textContent = 'Name needs to be 60 characters or fewer.'; err.style.display = 'block'; return; }
+  const updates = { name };
+  if (stagedGroupAvatar) updates.photoBase64 = stagedGroupAvatar;
+  try {
+    await updateDoc(doc(db, 'dms', dmId), updates);
+    stagedGroupAvatar = null;
+    $('group-settings-backdrop').classList.remove('open');
+  } catch (e) {
+    err.textContent = "Couldn't save changes."; err.style.display = 'block';
+  }
+});
+
+
 // ---------- composer ----------
 const msgInput = $('msg-input');
 msgInput.addEventListener('input', () => { msgInput.style.height = 'auto'; msgInput.style.height = Math.min(msgInput.scrollHeight, 140) + 'px'; });
@@ -1366,7 +1673,7 @@ async function sendMessage() {
   const hadImage = !!pendingImage;
   pendingImage = null; $('img-preview-wrap').style.display = 'none';
   try {
-    await addDoc(collection(db, 'channels', currentChannel, 'messages'), payload);
+    await addDoc(convoMessagesCollection(), payload);
   } catch (e) {
     toast("Message failed to send" + (hadImage ? " — the image may be too large." : "."));
   }
@@ -1433,6 +1740,65 @@ $('tt-parse-btn').addEventListener('click', () => {
 $('tt-clear-btn').addEventListener('click', () => {
   ttGrid = emptyTtGrid();
   renderTtGridTable();
+});
+
+// ---------- timetable image scan ----------
+function openApiKeyModal() {
+  $('apikey-input').value = localStorage.getItem(TT_KEY_STORAGE) || '';
+  $('apikey-err').style.display = 'none';
+  $('apikey-backdrop').classList.add('open');
+}
+$('tt-api-key-btn').addEventListener('click', () => openApiKeyModal());
+$('apikey-cancel').addEventListener('click', () => $('apikey-backdrop').classList.remove('open'));
+$('apikey-backdrop').addEventListener('click', (e) => { if (e.target.id === 'apikey-backdrop') $('apikey-backdrop').classList.remove('open'); });
+$('apikey-save').addEventListener('click', () => {
+  const val = $('apikey-input').value.trim();
+  if (!val) { $('apikey-err').textContent = 'Enter a key, or use "Clear saved key" to remove it.'; $('apikey-err').style.display = 'block'; return; }
+  localStorage.setItem(TT_KEY_STORAGE, val);
+  $('apikey-backdrop').classList.remove('open');
+  toast('API key saved to this browser.', 'info');
+});
+$('apikey-clear').addEventListener('click', () => {
+  localStorage.removeItem(TT_KEY_STORAGE);
+  $('apikey-input').value = '';
+  toast('API key cleared.', 'info');
+});
+
+async function handleTimetableImageFile(file) {
+  if (!file.type || !file.type.startsWith('image/')) { toast('That file doesn\'t look like an image.'); return; }
+  try {
+    const resized = await resizeImage(file, 1500, 0.85);
+    await parseTimetableImage(resized);
+  } catch (err) {
+    toast(err.message || "Couldn't read that image.");
+  }
+}
+$('tt-img-drop').addEventListener('click', () => $('tt-img-file').click());
+$('tt-img-drop').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('tt-img-file').click(); }
+});
+$('tt-img-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (file) await handleTimetableImageFile(file);
+});
+['dragover'].forEach(evt => $('tt-img-drop').addEventListener(evt, (e) => { e.preventDefault(); $('tt-img-drop').classList.add('drag'); }));
+['dragleave', 'drop'].forEach(evt => $('tt-img-drop').addEventListener(evt, (e) => { e.preventDefault(); $('tt-img-drop').classList.remove('drag'); }));
+$('tt-img-drop').addEventListener('drop', async (e) => {
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (file) await handleTimetableImageFile(file);
+});
+document.addEventListener('paste', async (e) => {
+  const paneOpen = $('settings-backdrop').classList.contains('open') && $('pane-timetable').classList.contains('active');
+  if (!paneOpen) return;
+  const items = (e.clipboardData && e.clipboardData.items) || [];
+  for (const item of items) {
+    if (item.type && item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      if (file) { e.preventDefault(); await handleTimetableImageFile(file); }
+      break;
+    }
+  }
 });
 
 $('open-settings').addEventListener('click', () => {
