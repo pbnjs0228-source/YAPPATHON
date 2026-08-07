@@ -235,6 +235,7 @@
     <button type="button" id="auth-forgot" class="link-btn">Forgot password?</button>
 
     <div id="auth-error"></div>
+    <div id="config-banner" style="display:none; margin-top:16px; text-align:left; background: var(--accent-soft); border:1px solid var(--accent); border-radius:10px; padding:12px 14px; font-size:12.5px; line-height:1.5; color: var(--text);"></div>
     <p class="auth-foot">
       <span id="auth-toggle-text">Need an account?</span>
       <button type="button" id="auth-toggle-btn" class="link-btn">Sign up</button>
@@ -243,6 +244,7 @@
 </div>
 
 <!-- ===== App shell ===== -->
+<div id="app-banner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:999; background:var(--danger); color:#fff; font-size:13px; padding:10px 16px; text-align:center;"></div>
 <div id="app">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
@@ -348,7 +350,8 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
+  getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
+  signOut, onAuthStateChanged,
   createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
@@ -372,6 +375,23 @@ const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
 const db = getFirestore(fbApp);
 const provider = new GoogleAuthProvider();
+
+// ---------- config self-check ----------
+// Surfaces a clear, actionable message instead of a wall of console errors
+// when the deployed domain hasn't been added to Firebase yet.
+function showConfigBanner(html) {
+  const el = document.getElementById('config-banner');
+  if (!el) return;
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+function showAppBanner(html) {
+  const el = document.getElementById('app-banner');
+  if (!el) return;
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+const currentDomain = location.hostname;
 
 // ---------- helpers ----------
 const $ = (id) => document.getElementById(id);
@@ -440,22 +460,77 @@ const DEFAULT_CHANNELS = ['general', 'random'];
 // ---------- auth ----------
 $('google-signin').addEventListener('click', async () => {
   $('auth-error').style.display = 'none';
+  document.getElementById('config-banner').style.display = 'none';
   try {
     await signInWithPopup(auth, provider);
   } catch (e) {
+    const code = e.code || '';
+    // Popup-based sign-in fails outright on unauthorized domains, and
+    // popups themselves get blocked in a lot of embedded/webview contexts.
+    // Redirect-based sign-in is more forgiving of the latter, so try it
+    // as a fallback — but unauthorized-domain will still fail on redirect
+    // too, so surface the real fix for that one instead of retrying blind.
+    if (code.includes('unauthorized-domain')) {
+      showAuthDomainBanner();
+      return;
+    }
+    if (code.includes('popup-blocked') || code.includes('popup-closed-by-user') || code.includes('cancelled-popup-request')) {
+      try {
+        await signInWithRedirect(auth, provider);
+        return; // page will navigate away
+      } catch (e2) {
+        showAuthError(friendlyAuthError(e2));
+        return;
+      }
+    }
     showAuthError(friendlyAuthError(e));
   }
 });
 $('sign-out').addEventListener('click', () => signOut(auth));
 
+// Catch the result if we fell back to a redirect sign-in above.
+getRedirectResult(auth).catch((e) => {
+  if (e && e.code === 'auth/unauthorized-domain') showAuthDomainBanner();
+  else if (e) showAuthError(friendlyAuthError(e));
+});
+
+let firestoreRulesBannerShown = false;
+function handleFirestoreError(context) {
+  return (e) => {
+    if (e && e.code === 'permission-denied') {
+      if (!firestoreRulesBannerShown) {
+        firestoreRulesBannerShown = true;
+        showAppBanner(
+          `Firestore permissions are blocking reads/writes. Update your
+           <strong>Firestore → Rules</strong> to allow signed-in users
+           (e.g. <code>allow read, write: if request.auth != null;</code>), then reload.`
+        );
+      }
+      return;
+    }
+    toast(`Couldn't load ${context}.`);
+  };
+}
+
+function showAuthDomainBanner() {
+  showConfigBanner(
+    `<strong>This domain isn't authorized for sign-in yet.</strong><br>
+     Add <code>${escapeHtml(currentDomain)}</code> to
+     <strong>Firebase Console → Authentication → Settings → Authorized domains</strong>,
+     then reload this page. Email/password sign-in below isn't affected by this.`
+  );
+}
+
 function friendlyAuthError(e) {
   const code = e.code || '';
+  if (code.includes('unauthorized-domain')) return `This domain (${currentDomain}) isn't authorized in Firebase yet — see the note above.`;
   if (code.includes('email-already-in-use')) return 'An account with that email already exists — try signing in instead.';
   if (code.includes('invalid-email')) return 'That email address doesn\'t look right.';
   if (code.includes('weak-password')) return 'Password should be at least 6 characters.';
   if (code.includes('user-not-found') || code.includes('invalid-credential') || code.includes('wrong-password')) return 'Incorrect email or password.';
   if (code.includes('too-many-requests')) return 'Too many attempts — please wait a moment and try again.';
   if (code.includes('popup-closed-by-user')) return 'Sign-in was cancelled.';
+  if (code.includes('network-request-failed')) return 'Network error — check your connection and try again.';
   return e.message || 'Something went wrong — please try again.';
 }
 function showAuthError(msg) {
@@ -539,7 +614,11 @@ onAuthStateChanged(auth, async (user) => {
     setInterval(heartbeat, 25000);
   } catch (e) {
     console.error(e);
-    toast("Couldn't set up your account: " + e.message);
+    if (e && e.code === 'permission-denied') {
+      handleFirestoreError('your account')(e);
+    } else {
+      toast("Couldn't set up your account: " + e.message);
+    }
   }
 });
 
@@ -610,7 +689,7 @@ function listenChannels() {
     });
     // admin-only create button visibility
     $('add-channel-btn').style.display = (profile && profile.role === 'admin') ? '' : 'none';
-  }, () => toast("Couldn't load channels."));
+  }, handleFirestoreError('channels'));
 }
 
 function switchChannel(name) {
@@ -644,7 +723,7 @@ function switchChannel(name) {
       wrap.appendChild(renderMessage(d.id, m, ts));
     });
     wrap.scrollTop = wrap.scrollHeight;
-  }, () => toast("Couldn't load messages."));
+  }, handleFirestoreError('messages'));
 }
 
 function renderMessage(id, m, ts) {
@@ -714,7 +793,7 @@ function listenMembers() {
     userCache = {};
     list.forEach(u => userCache[u.uid] = u);
     renderMembers(list);
-  }, () => toast("Couldn't load members."));
+  }, handleFirestoreError('members'));
   setInterval(() => renderMembers(Object.values(userCache)), 15000);
 }
 function renderMembers(list) {
