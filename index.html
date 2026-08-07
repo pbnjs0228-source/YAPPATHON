@@ -708,10 +708,13 @@ let profile = null;       // firestore users/{uid} doc data
 let pendingSignupUsername = null; // staged username during email/password signup
 let authMode = 'signin';  // 'signin' | 'signup'
 let userCache = {};        // uid -> profile, live-updated
-let channelCache = {};     // channel id -> channel doc (includes DMs)
+let channelCache = {};     // channel id -> public channel doc
+let dmCache = {};          // dm id -> dm doc (only ones I'm a member of)
 let currentChannel = 'general';
+let currentCollection = 'channels'; // 'channels' | 'dms'
 let unsubMessages = null;
 let unsubChannels = null;
+let unsubDms = null;
 let unsubMembers = null;
 let pendingImage = null;   // data URL staged for next message
 
@@ -856,6 +859,7 @@ onAuthStateChanged(auth, async (user) => {
     $('app').classList.remove('ready');
     if (unsubMessages) unsubMessages();
     if (unsubChannels) unsubChannels();
+    if (unsubDms) unsubDms();
     if (unsubMembers) unsubMembers();
     return;
   }
@@ -868,6 +872,7 @@ onAuthStateChanged(auth, async (user) => {
     $('app').classList.add('ready');
     listenProfile(user.uid);
     listenChannels();
+    listenDms(user.uid);
     listenMembers();
     switchChannel('general');
     heartbeat();
@@ -940,14 +945,14 @@ function listenProfile(uid) {
 function dmIdFor(uidA, uidB) {
   return 'dm_' + [uidA, uidB].sort().join('_');
 }
-function dmPartnerUid(channel) {
-  if (!channel || !Array.isArray(channel.members) || !profile) return null;
-  return channel.members.find(uid => uid !== profile.uid) || profile.uid;
+function dmPartnerUid(dm) {
+  if (!dm || !Array.isArray(dm.members) || !profile) return null;
+  return dm.members.find(uid => uid !== profile.uid) || profile.uid;
 }
-function dmTitle(channel) {
-  const other = dmPartnerUid(channel);
+function dmTitle(dm) {
+  const other = dmPartnerUid(dm);
   const u = other && userCache[other];
-  return (u && u.username) || (channel.memberNames && channel.memberNames[other]) || 'Direct message';
+  return (u && u.username) || (dm.memberNames && dm.memberNames[other]) || 'Direct message';
 }
 
 function listenChannels() {
@@ -961,27 +966,40 @@ function listenChannels() {
   }, handleFirestoreError('channels'));
 }
 
+// DMs live in their own collection so the channels listener stays a
+// plain full-collection read: a query has to be provably allowed by the
+// rules, and "only members may read this DM" can't be expressed over a
+// mixed channels collection.
+function listenDms(uid) {
+  const q = query(collection(db, 'dms'), where('members', 'array-contains', uid));
+  unsubDms = onSnapshot(q, (snap) => {
+    dmCache = {};
+    snap.forEach(d => { dmCache[d.id] = { id: d.id, ...d.data() }; });
+    renderChannelLists();
+  }, handleFirestoreError('direct messages'));
+}
+
 function renderChannelLists() {
   const list = $('channel-list');
   const dmList = $('dm-list');
   list.innerHTML = '';
   dmList.innerHTML = '';
-  let dmCount = 0;
   Object.values(channelCache).forEach(c => {
-    const isDm = c.type === 'dm';
-    if (isDm && !(profile && Array.isArray(c.members) && c.members.includes(profile.uid))) return;
     const li = document.createElement('li');
     li.className = 'channel-item' + (c.id === currentChannel ? ' active' : '');
-    if (isDm) {
-      dmCount++;
-      li.innerHTML = `<span class="hash">@</span><span>${escapeHtml(dmTitle(c))}</span>`;
-    } else {
-      li.innerHTML = `<span class="hash">#</span><span>${escapeHtml(c.id)}</span>`;
-    }
+    li.innerHTML = `<span class="hash">#</span><span>${escapeHtml(c.id)}</span>`;
     li.addEventListener('click', () => switchChannel(c.id));
-    (isDm ? dmList : list).appendChild(li);
+    list.appendChild(li);
   });
-  $('dm-empty').style.display = dmCount ? 'none' : '';
+  const dms = Object.values(dmCache);
+  dms.forEach(d => {
+    const li = document.createElement('li');
+    li.className = 'channel-item' + (d.id === currentChannel ? ' active' : '');
+    li.innerHTML = `<span class="hash">@</span><span>${escapeHtml(dmTitle(d))}</span>`;
+    li.addEventListener('click', () => switchChannel(d.id));
+    dmList.appendChild(li);
+  });
+  $('dm-empty').style.display = dms.length ? 'none' : '';
 }
 
 async function openDmWith(uid) {
@@ -990,13 +1008,15 @@ async function openDmWith(uid) {
   const other = userCache[uid];
   const id = dmIdFor(profile.uid, uid);
   try {
-    const ref = doc(db, 'channels', id);
+    const ref = doc(db, 'dms', id);
     const snap = await getDoc(ref);
     if (!snap.exists()) {
       await setDoc(ref, {
-        type: 'dm',
         members: [profile.uid, uid].sort(),
-        memberNames: { [profile.uid]: profile.username, [uid]: (other && other.username) || 'Member' },
+        memberNames: {
+          [profile.uid]: (profile.username || 'Member').slice(0, 40),
+          [uid]: ((other && other.username) || 'Member').slice(0, 40)
+        },
         createdAt: serverTimestamp()
       });
       toast(`DM with ${(other && other.username) || 'member'} created.`, 'info');
@@ -1008,16 +1028,16 @@ async function openDmWith(uid) {
 }
 
 function switchChannel(name) {
+  const dm = dmCache[name];
   currentChannel = name;
-  const c = channelCache[name];
-  const isDm = c && c.type === 'dm';
-  const title = isDm ? dmTitle(c) : name;
+  currentCollection = dm ? 'dms' : 'channels';
+  const title = dm ? dmTitle(dm) : name;
   $('chan-name').textContent = title;
-  document.querySelector('.topbar .hash').textContent = isDm ? '@' : '#';
-  $('msg-input').placeholder = isDm ? `Message @${title}` : `Message #${name}`;
+  document.querySelector('.topbar .hash').textContent = dm ? '@' : '#';
+  $('msg-input').placeholder = dm ? `Message @${title}` : `Message #${name}`;
   renderChannelLists();
   if (unsubMessages) unsubMessages();
-  const q = query(collection(db, 'channels', name, 'messages'), orderBy('timestamp', 'asc'), limit(200));
+  const q = query(collection(db, currentCollection, name, 'messages'), orderBy('timestamp', 'asc'), limit(200));
   unsubMessages = onSnapshot(q, (snap) => {
     const wrap = $('messages');
     if (snap.empty) {
@@ -1116,7 +1136,7 @@ function renderMessage(id, m, ts, grouped) {
 }
 function deleteMessage(id) {
   if (!confirm('Delete this message? This can\'t be undone.')) return;
-  deleteDoc(doc(db, 'channels', currentChannel, 'messages', id)).catch(() => toast("Couldn't delete that message."));
+  deleteDoc(doc(db, currentCollection, currentChannel, 'messages', id)).catch(() => toast("Couldn't delete that message."));
 }
 $('lightbox').addEventListener('click', () => $('lightbox').classList.remove('open'));
 
@@ -1208,14 +1228,17 @@ function renderMembers(list) {
 }
 
 // ---------- block / mute ----------
-function isBlocked(uid) { return !!(profile && Array.isArray(profile.blocked) && profile.blocked.includes(uid)); }
-function isMuted(uid) { return !!(profile && Array.isArray(profile.muted) && profile.muted.includes(uid)); }
+// `blocked` and `muted` are uid -> true maps rather than arrays so the
+// security rules can fully validate them (a rule can check every value,
+// but can't iterate a list).
+function isBlocked(uid) { return !!(profile && profile.blocked && profile.blocked[uid]); }
+function isMuted(uid) { return !!(profile && profile.muted && profile.muted[uid]); }
 function isHidden(uid) { return isBlocked(uid) || isMuted(uid); }
 
 async function toggleListMembership(field, uid) {
   if (!profile) return;
-  const current = Array.isArray(profile[field]) ? profile[field] : [];
-  const next = current.includes(uid) ? current.filter(x => x !== uid) : current.concat(uid);
+  const next = { ...(profile[field] || {}) };
+  if (next[uid]) delete next[uid]; else next[uid] = true;
   try {
     await updateDoc(doc(db, 'users', profile.uid), { [field]: next });
     profile = { ...profile, [field]: next };
@@ -1244,7 +1267,7 @@ function openMemberContextMenu(e, uid) {
   const items = [];
   items.push({ label: '👤 View profile', onClick: () => openProfile(uid) });
   if (!isSelf) {
-    const existing = profile && channelCache[dmIdFor(profile.uid, uid)];
+    const existing = profile && dmCache[dmIdFor(profile.uid, uid)];
     items.push({ label: existing ? '💬 Open DM' : '💬 Create DM', onClick: () => openDmWith(uid) });
     items.push({ label: isMuted(uid) ? '🔊 Unmute' : '🔇 Mute', onClick: () => toggleListMembership('muted', uid) });
     items.push({ label: isBlocked(uid) ? '✓ Unblock' : '🚫 Block', danger: !isBlocked(uid), onClick: () => toggleListMembership('blocked', uid) });
@@ -1366,7 +1389,7 @@ async function sendMessage() {
   const hadImage = !!pendingImage;
   pendingImage = null; $('img-preview-wrap').style.display = 'none';
   try {
-    await addDoc(collection(db, 'channels', currentChannel, 'messages'), payload);
+    await addDoc(collection(db, currentCollection, currentChannel, 'messages'), payload);
   } catch (e) {
     toast("Message failed to send" + (hadImage ? " — the image may be too large." : "."));
   }
