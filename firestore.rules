@@ -3,8 +3,9 @@ rules_version = '2';
 // Matches the data model in index.html:
 //   users/{uid}                         -> profile docs, keyed by auth uid
 //   channels/{channelId}                -> public channel docs (name, createdAt)
-//                                          OR a DM ({ type: 'dm', members, memberNames, createdAt })
 //   channels/{channelId}/messages/{id}  -> chat messages
+//   dms/{dmId}                          -> direct messages ({ members, memberNames, createdAt })
+//   dms/{dmId}/messages/{id}            -> chat messages
 //
 // Admin model:
 // - admin@yappathon.com is the "root" admin: ensureUserDoc() auto-promotes
@@ -36,14 +37,19 @@ rules_version = '2';
 //   so a client can't smuggle extra rows/columns or oversized cells.
 //
 // Block / mute (member right-click menu):
-// - `blocked` and `muted` are owner-only string arrays of uids on the
-//   acting user's own doc. They're purely a client-side filter, so they
-//   only need to be writable by their owner.
+// - `blocked` and `muted` are owner-only uid -> true maps on the acting
+//   user's own doc. They're maps rather than arrays so every value can be
+//   validated here (rules can't iterate a list). Purely a client-side
+//   filter, so they only need to be writable by their owner.
 //
 // Direct messages (member right-click menu > Create DM):
-// - A DM is a channel doc with type == 'dm' and a two-uid `members` list,
-//   at the deterministic id `dm_<uidA>_<uidB>` (uids sorted) so both sides
-//   derive the same id and can't create duplicates.
+// - A DM is a doc in its own top-level `dms` collection with a two-uid
+//   `members` list, at the deterministic id `dm_<uidA>_<uidB>` (uids
+//   sorted) so both sides derive the same id and can't create duplicates.
+// - They're kept out of `channels` deliberately: a query must be provably
+//   allowed by these rules, so a member-scoped DM sitting in `channels`
+//   would make the app's full-collection channels listener fail for
+//   everyone. The client queries `dms` with members array-contains uid.
 // - Either member may create it; only its two members can read the doc or
 //   read/write its messages. Membership is immutable once created.
 
@@ -99,10 +105,15 @@ service cloud.firestore {
         && isValidTtRow(tt.grid[6]);
     }
 
-    // A blocked/muted list: uids only, capped so it can't be used as
-    // free storage.
-    function isValidUidList(l) {
-      return l is list && l.size() <= 500;
+    // A blocked/muted set: a uid -> true map, capped so it can't be used
+    // as free storage. Keys are strings by construction and every value
+    // must be exactly `true`, so nothing else can be smuggled in.
+    function isValidUidSet(m) {
+      return m is map && m.size() <= 500 && m.values().hasOnly([true]);
+    }
+
+    function isShortString(v, maxLen) {
+      return v is string && v.size() <= maxLen;
     }
 
     // ---------------- users/{uid} ----------------
@@ -151,9 +162,14 @@ service cloud.firestore {
           && request.resource.data.username.size() <= 40
           && (request.resource.data.photoBase64 == null || request.resource.data.photoBase64 is string)
           && (!('bio' in request.resource.data) || (request.resource.data.bio is string && request.resource.data.bio.size() <= 160))
+          // lastSeen is either left as-is (a profile/timetable save) or
+          // stamped by the server (the heartbeat) — never client-chosen,
+          // so nobody can fake being online.
+          && (request.resource.data.lastSeen == resource.data.lastSeen
+              || request.resource.data.lastSeen == request.time)
           && (!('timetable' in request.resource.data) || isValidTimetable(request.resource.data.timetable))
-          && (!('blocked' in request.resource.data) || isValidUidList(request.resource.data.blocked))
-          && (!('muted' in request.resource.data) || isValidUidList(request.resource.data.muted))
+          && (!('blocked' in request.resource.data) || isValidUidSet(request.resource.data.blocked))
+          && (!('muted' in request.resource.data) || isValidUidSet(request.resource.data.muted))
         ) || (
           isAdmin()
           && request.auth.uid != uid
@@ -167,57 +183,24 @@ service cloud.firestore {
 
     // ---------------- channels/{channelId} ----------------
     match /channels/{channelId} {
-
-      function channelDoc() {
-        return get(/databases/$(database)/documents/channels/$(channelId)).data;
-      }
-      function isDmChannel() {
-        return exists(/databases/$(database)/documents/channels/$(channelId))
-          && channelDoc().get('type', 'channel') == 'dm';
-      }
-      // Public channels are readable by everyone signed in; a DM only by
-      // its two members.
-      function canAccessChannel() {
-        return isSignedIn()
-          && (!isDmChannel() || request.auth.uid in channelDoc().members);
-      }
-
-      allow read: if canAccessChannel();
+      allow read: if isSignedIn();
 
       // Any signed-in user can silently create the two default channels
-      // (ensureDefaultChannels runs for every user on login). Any other
-      // named channel requires admin, matching the UI's admin-only "+"
-      // button. Separately, any signed-in user can create a DM they are
-      // a member of, at its deterministic sorted-uid id.
-      allow create: if isSignedIn() && (
-        (
-          (isAdmin() || channelId in ['general', 'random'])
-          && request.resource.data.keys().hasOnly(['name', 'createdAt'])
-          && request.resource.data.name == channelId
-          && request.resource.data.createdAt == request.time
-        ) || (
-          request.resource.data.keys().hasOnly(['type', 'members', 'memberNames', 'createdAt'])
-          && request.resource.data.type == 'dm'
-          && request.resource.data.members is list
-          && request.resource.data.members.size() == 2
-          && request.resource.data.members[0] is string
-          && request.resource.data.members[1] is string
-          && request.resource.data.members[0] < request.resource.data.members[1]
-          && request.auth.uid in request.resource.data.members
-          && channelId == 'dm_' + request.resource.data.members[0] + '_' + request.resource.data.members[1]
-          && request.resource.data.memberNames is map
-          && request.resource.data.memberNames.keys().hasOnly(request.resource.data.members)
-          && request.resource.data.createdAt == request.time
-        )
-      );
+      // (ensureDefaultChannels runs for every user on login). Anything
+      // else requires admin, matching the UI's admin-only "+" button.
+      allow create: if isSignedIn()
+        && (isAdmin() || channelId in ['general', 'random'])
+        && request.resource.data.keys().hasOnly(['name', 'createdAt'])
+        && request.resource.data.name == channelId
+        && request.resource.data.createdAt == request.time;
 
-      allow update, delete: if false; // no rename/delete-channel or leave-DM feature
+      allow update, delete: if false; // no rename/delete-channel feature
 
       // ---------------- channels/{channelId}/messages/{messageId} ----------------
       match /messages/{messageId} {
-        allow read: if canAccessChannel();
+        allow read: if isSignedIn();
 
-        allow create: if canAccessChannel()
+        allow create: if isSignedIn()
           && request.resource.data.keys().hasOnly(
                ['uid', 'username', 'role', 'photoBase64', 'text', 'imageBase64', 'timestamp'])
           && request.resource.data.uid == request.auth.uid
@@ -235,6 +218,61 @@ service cloud.firestore {
 
         // Author or admin can delete (matches renderMessage()'s canDelete logic).
         allow delete: if isSignedIn()
+          && (resource.data.uid == request.auth.uid || isAdmin());
+
+        allow update: if false; // no message-edit feature
+      }
+    }
+
+    // ---------------- dms/{dmId} ----------------
+    match /dms/{dmId} {
+
+      function isMember() {
+        return isSignedIn()
+          && exists(/databases/$(database)/documents/dms/$(dmId))
+          && request.auth.uid in get(/databases/$(database)/documents/dms/$(dmId)).data.members;
+      }
+
+      allow read: if isMember();
+
+      // Either participant can create the DM, at its deterministic
+      // sorted-uid id so both sides converge on the same doc.
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['members', 'memberNames', 'createdAt'])
+        && request.resource.data.members is list
+        && request.resource.data.members.size() == 2
+        && request.resource.data.members[0] is string
+        && request.resource.data.members[1] is string
+        && request.resource.data.members[0] < request.resource.data.members[1]
+        && request.auth.uid in request.resource.data.members
+        && dmId == 'dm_' + request.resource.data.members[0] + '_' + request.resource.data.members[1]
+        && request.resource.data.memberNames is map
+        && request.resource.data.memberNames.keys().hasOnly(request.resource.data.members)
+        && isShortString(request.resource.data.memberNames[request.resource.data.members[0]], 40)
+        && isShortString(request.resource.data.memberNames[request.resource.data.members[1]], 40)
+        && request.resource.data.createdAt == request.time;
+
+      allow update, delete: if false; // membership is immutable, no leave-DM feature
+
+      // ---------------- dms/{dmId}/messages/{messageId} ----------------
+      match /messages/{messageId} {
+        allow read: if isMember();
+
+        allow create: if isMember()
+          && request.resource.data.keys().hasOnly(
+               ['uid', 'username', 'role', 'photoBase64', 'text', 'imageBase64', 'timestamp'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.role == (isAdmin() ? 'admin' : 'member')
+          && isShortString(request.resource.data.username, 40)
+          && request.resource.data.username.size() >= 1
+          && (request.resource.data.photoBase64 == null || request.resource.data.photoBase64 is string)
+          && (request.resource.data.text == null || isShortString(request.resource.data.text, 4000))
+          && (request.resource.data.imageBase64 == null
+              || (request.resource.data.imageBase64 is string && request.resource.data.imageBase64.size() < 900000))
+          && !(request.resource.data.text == null && request.resource.data.imageBase64 == null)
+          && request.resource.data.timestamp == request.time;
+
+        allow delete: if isMember()
           && (resource.data.uid == request.auth.uid || isAdmin());
 
         allow update: if false; // no message-edit feature
