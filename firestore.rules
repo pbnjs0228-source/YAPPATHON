@@ -1,0 +1,85 @@
+rules_version = '2';
+
+// Security rules for the Yappathon chat app (index.html).
+//
+// Collections used by the app:
+//   users/{uid}                          profile, role, bio, timetable, blocked[], muted[]
+//   channels/{channelId}                 public channel, or a DM ({ type: 'dm', members: [uidA, uidB] })
+//   channels/{channelId}/messages/{id}   messages in a channel or DM
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function channelData(channelId) {
+      return get(/databases/$(database)/documents/channels/$(channelId)).data;
+    }
+
+    function isDmDoc(data) {
+      return data.type == 'dm'
+        && data.members is list
+        && data.members.size() == 2;
+    }
+
+    // A DM is only visible/writable to its two members.
+    function canAccessChannel(channelId) {
+      let data = channelData(channelId);
+      return !signedIn() ? false
+        : (data.get('type', 'channel') != 'dm' || request.auth.uid in data.members);
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if isSelf(uid);
+      // Members edit their own profile; only admins may change someone's role.
+      allow update: if isAdmin()
+        || (isSelf(uid) && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    match /channels/{channelId} {
+      allow read: if signedIn() && canAccessChannel(channelId);
+
+      // Admins create public channels; anyone can create a DM they're part of.
+      allow create: if isAdmin()
+        || (signedIn()
+            && isDmDoc(request.resource.data)
+            && request.auth.uid in request.resource.data.members
+            && channelId == 'dm_' + request.resource.data.members[0] + '_' + request.resource.data.members[1]);
+
+      // DM membership is fixed once created.
+      allow update: if isAdmin()
+        || (signedIn()
+            && resource.data.get('type', 'channel') == 'dm'
+            && request.auth.uid in resource.data.members
+            && request.resource.data.members == resource.data.members
+            && request.resource.data.type == resource.data.type);
+
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if signedIn() && canAccessChannel(channelId);
+
+        allow create: if signedIn()
+          && canAccessChannel(channelId)
+          && request.resource.data.uid == request.auth.uid;
+
+        // Messages aren't editable in the app — only the author or an admin can delete.
+        allow update: if false;
+        allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      }
+    }
+  }
+}
