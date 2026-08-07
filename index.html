@@ -186,14 +186,20 @@
   .theme-opt .dot { width:10px; height:10px; border-radius:50%; }
 
   .messages { flex:1; overflow-y:auto; padding: 18px 22px; display:flex; flex-direction:column; gap:2px; }
-  .msg-row { display:flex; gap:12px; padding:6px 8px; border-radius:10px; animation: fadeSlideUp .28s cubic-bezier(.22,1,.36,1) both; transition: background .15s ease; }
+  .msg-row { display:flex; gap:12px; padding:6px 8px; border-radius:10px; animation: fadeSlideUp .28s cubic-bezier(.22,1,.36,1) both; transition: background .15s ease; position:relative; }
   .msg-row:hover { background: var(--bg-alt); }
   .msg-row .avatar { width:38px; height:38px; font-size:14px; margin-top:2px; transition: transform .15s ease; }
   .msg-row:hover .avatar { transform: scale(1.05); }
+  .msg-row.grouped { padding-top:1px; padding-bottom:1px; margin-top:-2px; }
+  .time-gutter { width:38px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; color: var(--text-muted); opacity:0; font-family:'JetBrains Mono', monospace; transition: opacity .12s ease; }
+  .msg-row.grouped:hover .time-gutter { opacity:1; }
+  .msg-del.grouped-del { position:absolute; top:2px; right:8px; margin-left:0; }
   .msg-body { min-width:0; flex:1; }
   .msg-head { display:flex; align-items:baseline; gap:8px; }
   .msg-uname { font-weight:700; font-size:14px; }
   .msg-uname.admin { color: var(--accent); }
+  .msg-uname.clickable { cursor:pointer; }
+  .msg-uname.clickable:hover { text-decoration: underline; }
   .msg-time { font-size:11px; color: var(--text-muted); font-family:'JetBrains Mono', monospace; }
   .msg-text { font-size:14px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
   .msg-img { margin-top:6px; max-width:320px; max-height:320px; border-radius:10px; border:1px solid var(--border); cursor:zoom-in; display:block; transition: transform .18s ease, filter .18s ease; }
@@ -218,14 +224,23 @@
   /* ---------- Members ---------- */
   .members { background: var(--bg-alt); border-left:1px solid var(--border); overflow-y:auto; padding: 16px 12px; }
   .members h3 { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color: var(--text-muted); margin: 6px 8px 10px; }
-  .member-row { display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:8px; transition: background .15s ease; }
-  .member-row:hover { background: var(--bg-elevated); }
+  .member-row { display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:8px; transition: background .15s ease, transform .1s ease; cursor:pointer; }
+  .member-row:hover { background: var(--bg-elevated); transform: translateX(2px); }
+  .member-row:active { transform: translateX(2px) scale(.98); }
   .member-row .avatar { width:32px; height:32px; font-size:12px; position:relative; }
   .status-dot { width:10px; height:10px; border-radius:50%; position:absolute; bottom:-1px; right:-1px; border:2px solid var(--bg-alt); }
   .status-dot.online { background: var(--online); animation: pulseRing 2s ease-out infinite; }
   .status-dot.offline { background: var(--text-muted); }
   .member-name { font-size:13px; font-weight:600; display:flex; align-items:center; gap:4px; }
   .member-name.admin { color: var(--accent); }
+
+  .profile-header { display:flex; align-items:center; gap:14px; }
+  .profile-name-wrap { min-width:0; }
+  .profile-name { font-size:17px; font-weight:700; display:flex; align-items:center; gap:6px; }
+  .profile-role { font-size:12px; color: var(--text-muted); margin-top:2px; }
+  .profile-bio { font-size:13.5px; line-height:1.5; color: var(--text); margin: 18px 0 0; white-space:pre-wrap; word-break:break-word; }
+  .profile-bio:empty::before { content: 'No bio yet.'; color: var(--text-muted); font-style:italic; }
+  .profile-actions { justify-content:space-between; }
 
   /* ---------- Modal ---------- */
   .modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); align-items:center; justify-content:center; z-index:100; animation: fadeIn .18s ease both; }
@@ -235,6 +250,9 @@
   .modal label { font-size:12px; color: var(--text-muted); display:block; margin-bottom:6px; margin-top:14px; }
   .modal input[type=text] { width:100%; background: var(--bg-input); border:1px solid var(--border); color:var(--text); padding:10px 12px; border-radius:8px; font-size:14px; }
   .modal input[type=text]:focus { outline:none; border-color: var(--accent); }
+  .modal textarea { width:100%; background: var(--bg-input); border:1px solid var(--border); color:var(--text); padding:10px 12px; border-radius:8px; font-size:14px; font-family:inherit; resize:vertical; }
+  .modal textarea:focus { outline:none; border-color: var(--accent); }
+  .char-count { text-align:right; font-size:11px; color: var(--text-muted); margin-top:4px; }
   .modal-avatar-row { display:flex; align-items:center; gap:14px; margin-top:8px; }
   .modal-avatar-row .avatar { width:60px; height:60px; font-size:20px; }
   .upload-btn { background: var(--bg-input); border:1px solid var(--border); color:var(--text); padding:8px 14px; border-radius:8px; font-size:13px; }
@@ -382,10 +400,31 @@
     </div>
     <label for="settings-username">Username</label>
     <input type="text" id="settings-username" maxlength="24" />
+    <label for="settings-bio">Bio</label>
+    <textarea id="settings-bio" maxlength="160" rows="3" placeholder="Say something about yourself…"></textarea>
+    <div class="char-count" id="settings-bio-count">0/160</div>
     <div class="modal-err" id="settings-err"></div>
     <div class="modal-actions">
       <button class="btn" id="settings-cancel">Cancel</button>
       <button class="btn primary" id="settings-save">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Member profile popup ===== -->
+<div class="modal-backdrop" id="profile-backdrop">
+  <div class="modal profile-modal">
+    <div class="profile-header">
+      <img class="avatar" id="profile-avatar" style="width:72px;height:72px;" />
+      <div class="profile-name-wrap">
+        <div class="profile-name" id="profile-name"></div>
+        <div class="profile-role" id="profile-role"></div>
+      </div>
+    </div>
+    <p class="profile-bio" id="profile-bio"></p>
+    <div class="modal-actions profile-actions">
+      <button class="btn" id="profile-close">Close</button>
+      <button class="btn primary" id="profile-admin-toggle" style="display:none;"></button>
     </div>
   </div>
 </div>
@@ -695,6 +734,7 @@ async function ensureUserDoc(user, explicitUsername) {
       email: user.email,
       username: explicitUsername || user.displayName || user.email.split('@')[0],
       photoBase64: null,
+      bio: '',
       role,
       createdAt: serverTimestamp(),
       lastSeen: serverTimestamp()
@@ -772,51 +812,80 @@ function switchChannel(name) {
     }
     wrap.innerHTML = '';
     let lastDay = null;
+    let lastMsg = null; // { uid, ts } of previous rendered message, for grouping
+    const GROUP_WINDOW_MS = 5 * 60 * 1000;
     snap.forEach(d => {
       const m = d.data();
       const ts = m.timestamp ? m.timestamp.toDate() : new Date();
       const dayKey = ts.toDateString();
       if (dayKey !== lastDay) {
         lastDay = dayKey;
+        lastMsg = null; // never group across a day divider
         const div = document.createElement('div');
         div.className = 'day-divider';
         div.textContent = ts.toLocaleDateString(undefined, { weekday:'long', month:'short', day:'numeric' });
         wrap.appendChild(div);
       }
-      wrap.appendChild(renderMessage(d.id, m, ts));
+      const grouped = !!(lastMsg && lastMsg.uid === m.uid && (ts - lastMsg.ts) < GROUP_WINDOW_MS);
+      wrap.appendChild(renderMessage(d.id, m, ts, grouped));
+      lastMsg = { uid: m.uid, ts };
     });
     wrap.scrollTop = wrap.scrollHeight;
   }, handleFirestoreError('messages'));
 }
 
-function renderMessage(id, m, ts) {
+function renderMessage(id, m, ts, grouped) {
   const row = document.createElement('div');
-  row.className = 'msg-row';
-  const av = document.createElement('img');
-  av.className = 'avatar'; av.width = 38; av.height = 38; av.style.width='38px'; av.style.height='38px';
-  renderAvatar(av, { uid: m.uid, username: m.username, photoBase64: m.photoBase64 });
-  row.appendChild(av);
+  row.className = 'msg-row' + (grouped ? ' grouped' : '');
+  const isAdmin = m.role === 'admin';
+  const canDelete = profile && (profile.role === 'admin' || profile.uid === m.uid);
+
+  if (grouped) {
+    const gutter = document.createElement('div');
+    gutter.className = 'time-gutter';
+    gutter.textContent = ts.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    row.appendChild(gutter);
+  } else {
+    const av = document.createElement('img');
+    av.className = 'avatar'; av.width = 38; av.height = 38; av.style.width='38px'; av.style.height='38px';
+    av.style.cursor = 'pointer';
+    renderAvatar(av, { uid: m.uid, username: m.username, photoBase64: m.photoBase64 });
+    av.addEventListener('click', () => openProfile(m.uid));
+    row.appendChild(av);
+  }
 
   const body = document.createElement('div');
   body.className = 'msg-body';
-  const isAdmin = m.role === 'admin';
-  const canDelete = profile && (profile.role === 'admin' || profile.uid === m.uid);
   body.innerHTML = `
+    ${!grouped ? `
     <div class="msg-head">
-      <span class="msg-uname ${isAdmin ? 'admin' : ''}">${escapeHtml(m.username)}${isAdmin ? ' 👑' : ''}</span>
+      <span class="msg-uname clickable ${isAdmin ? 'admin' : ''}">${escapeHtml(m.username)}${isAdmin ? ' 👑' : ''}</span>
       <span class="msg-time">${ts.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
       ${canDelete ? `<button class="msg-del" data-id="${id}">Delete</button>` : ''}
-    </div>
+    </div>` : ''}
     ${m.text ? `<div class="msg-text"></div>` : ''}
     ${m.imageBase64 ? `<img class="msg-img" src="${m.imageBase64}" />` : ''}
   `;
   if (m.text) body.querySelector('.msg-text').textContent = m.text;
+  const unameEl = body.querySelector('.msg-uname');
+  if (unameEl) unameEl.addEventListener('click', () => openProfile(m.uid));
   const delBtn = body.querySelector('.msg-del');
   if (delBtn) delBtn.addEventListener('click', () => deleteDoc(doc(db, 'channels', currentChannel, 'messages', id)).catch(()=>toast("Couldn't delete that message.")));
   const imgEl = body.querySelector('.msg-img');
   if (imgEl) imgEl.addEventListener('click', () => { $('lightbox-img').src = imgEl.src; $('lightbox').classList.add('open'); });
 
   row.appendChild(body);
+
+  // Grouped rows have no header to hang a delete button off, so give
+  // them a floating one that only appears on row hover.
+  if (grouped && canDelete) {
+    const groupedDel = document.createElement('button');
+    groupedDel.className = 'msg-del grouped-del';
+    groupedDel.textContent = 'Delete';
+    groupedDel.addEventListener('click', () => deleteDoc(doc(db, 'channels', currentChannel, 'messages', id)).catch(()=>toast("Couldn't delete that message.")));
+    row.appendChild(groupedDel);
+  }
+
   return row;
 }
 $('lightbox').addEventListener('click', () => $('lightbox').classList.remove('open'));
@@ -884,9 +953,48 @@ function renderMembers(list) {
     name.className = 'member-name' + (u.role === 'admin' ? ' admin' : '');
     name.innerHTML = escapeHtml(u.username) + (u.role === 'admin' ? ' 👑' : '');
     row.appendChild(name);
+    row.addEventListener('click', () => openProfile(u.uid));
     wrap.appendChild(row);
   });
 }
+
+// ---------- member profile popup ----------
+function openProfile(uid) {
+  const u = userCache[uid];
+  if (!u) return; // not loaded yet (e.g. listenMembers hasn't synced)
+  $('profile-name').innerHTML = escapeHtml(u.username) + (u.role === 'admin' ? ' <span class="crown">👑</span>' : '');
+  $('profile-role').textContent = u.role === 'admin' ? 'Admin' : 'Member';
+  $('profile-bio').textContent = u.bio || '';
+  renderAvatar($('profile-avatar'), u);
+
+  const toggleBtn = $('profile-admin-toggle');
+  const canManage = profile && profile.role === 'admin' && u.uid !== profile.uid;
+  if (canManage) {
+    const targetIsAdmin = u.role === 'admin';
+    toggleBtn.style.display = '';
+    toggleBtn.textContent = targetIsAdmin ? 'Remove admin' : 'Make admin';
+    toggleBtn.className = 'btn ' + (targetIsAdmin ? 'danger-ghost' : 'primary');
+    toggleBtn.onclick = async () => {
+      const newRole = targetIsAdmin ? 'member' : 'admin';
+      toggleBtn.disabled = true;
+      try {
+        await updateDoc(doc(db, 'users', u.uid), { role: newRole });
+        toast(`${u.username} is ${newRole === 'admin' ? 'now an admin' : 'no longer an admin'}.`, 'info');
+        $('profile-backdrop').classList.remove('open');
+      } catch (e) {
+        toast("Couldn't update that member's role.");
+      } finally {
+        toggleBtn.disabled = false;
+      }
+    };
+  } else {
+    toggleBtn.style.display = 'none';
+    toggleBtn.onclick = null;
+  }
+  $('profile-backdrop').classList.add('open');
+}
+$('profile-close').addEventListener('click', () => $('profile-backdrop').classList.remove('open'));
+$('profile-backdrop').addEventListener('click', (e) => { if (e.target.id === 'profile-backdrop') $('profile-backdrop').classList.remove('open'); });
 
 // ---------- composer ----------
 const msgInput = $('msg-input');
@@ -943,8 +1051,13 @@ async function sendMessage() {
 // ---------- settings modal ----------
 $('open-settings').addEventListener('click', () => {
   $('settings-username').value = profile.username;
+  $('settings-bio').value = profile.bio || '';
+  $('settings-bio-count').textContent = `${($('settings-bio').value || '').length}/160`;
   $('settings-err').style.display = 'none';
   $('settings-backdrop').classList.add('open');
+});
+$('settings-bio').addEventListener('input', () => {
+  $('settings-bio-count').textContent = `${$('settings-bio').value.length}/160`;
 });
 $('settings-cancel').addEventListener('click', () => $('settings-backdrop').classList.remove('open'));
 $('settings-upload-btn').addEventListener('click', () => $('settings-file-input').click());
@@ -961,9 +1074,11 @@ $('settings-file-input').addEventListener('change', async (e) => {
 });
 $('settings-save').addEventListener('click', async () => {
   const name = $('settings-username').value.trim();
+  const bio = $('settings-bio').value.trim();
   const err = $('settings-err');
   if (name.length < 2) { err.textContent = 'Username needs at least 2 characters.'; err.style.display = 'block'; return; }
-  const updates = { username: name };
+  if (bio.length > 160) { err.textContent = 'Bio needs to be 160 characters or fewer.'; err.style.display = 'block'; return; }
+  const updates = { username: name, bio };
   if (stagedAvatar) updates.photoBase64 = stagedAvatar;
   try {
     await updateDoc(doc(db, 'users', currentUser.uid), updates);
