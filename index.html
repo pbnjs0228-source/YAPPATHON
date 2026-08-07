@@ -181,6 +181,12 @@
   .context-menu.open { display:block; }
   .context-menu button { width:100%; text-align:left; background:none; border:none; color: var(--text); font-size:13.5px; padding:8px 10px; border-radius:7px; transition: background .12s ease; }
   .context-menu button:hover { background: var(--bg-input); }
+  .context-menu button.danger { color: var(--danger); }
+  .context-menu hr { border:none; border-top:1px solid var(--border); margin:4px 0; }
+  .blocked-group { margin: 4px 0; }
+  .blocked-bar { display:flex; align-items:center; gap:10px; padding:8px 12px; border:1px dashed var(--border); border-radius:10px; color: var(--text-muted); font-size:13px; }
+  .blocked-bar button { background: var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:4px 10px; font-size:12px; color: var(--text); flex-shrink:0; }
+  .blocked-bar button:hover { border-color: var(--accent); color: var(--accent); }
   .games-tab { display:flex; align-items:center; gap:8px; padding:8px 10px; margin: 0 8px; border-radius:8px; color: var(--text-muted); font-size:14px; opacity:.55; cursor:default; }
   .badge-soon { font-size:9px; text-transform:uppercase; letter-spacing:.05em; background: var(--bg-elevated); border:1px solid var(--border); padding:2px 6px; border-radius:20px; margin-left:auto; }
 
@@ -627,6 +633,8 @@
 <!-- ===== Right-click context menu (member list) ===== -->
 <div class="context-menu" id="member-context-menu">
   <button id="ctx-create-dm">💬 Create DM</button>
+  <hr>
+  <button id="ctx-block" class="danger">🚫 Block</button>
 </div>
 
 <div id="lightbox"><img id="lightbox-img" /></div>
@@ -641,7 +649,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, deleteDoc,
-  onSnapshot, query, orderBy, serverTimestamp, limit, where
+  onSnapshot, query, orderBy, serverTimestamp, limit, where, arrayUnion, arrayRemove
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -1064,6 +1072,7 @@ async function ensureUserDoc(user, explicitUsername) {
       photoBase64: null,
       bio: '',
       role,
+      blocked: [],
       createdAt: serverTimestamp(),
       lastSeen: serverTimestamp()
     });
@@ -1211,6 +1220,32 @@ function convoMessageDoc(id) {
     : doc(db, 'channels', currentChannel, 'messages', id);
 }
 
+function renderBlockedGroup(items) {
+  const wrapDiv = document.createElement('div');
+  wrapDiv.className = 'blocked-group';
+  const bar = document.createElement('div');
+  bar.className = 'blocked-bar';
+  const count = items.length;
+  const showBtn = document.createElement('button');
+  showBtn.textContent = 'Show';
+  const label = document.createElement('span');
+  label.textContent = `🚫 ${count} blocked message${count === 1 ? '' : 's'}`;
+  bar.appendChild(label);
+  bar.appendChild(showBtn);
+  wrapDiv.appendChild(bar);
+  const body = document.createElement('div');
+  body.className = 'blocked-body';
+  body.style.display = 'none';
+  items.forEach(it => body.appendChild(renderMessage(it.id, it.m, it.ts, false)));
+  wrapDiv.appendChild(body);
+  showBtn.addEventListener('click', () => {
+    const showing = body.style.display !== 'none';
+    body.style.display = showing ? 'none' : 'block';
+    showBtn.textContent = showing ? 'Show' : 'Hide';
+  });
+  return wrapDiv;
+}
+
 function listenConvoMessages() {
   if (unsubMessages) unsubMessages();
   const q = query(convoMessagesCollection(), orderBy('timestamp', 'asc'), limit(200));
@@ -1224,11 +1259,17 @@ function listenConvoMessages() {
     let lastDay = null;
     let lastMsg = null; // { uid, ts } of previous rendered message, for grouping
     const GROUP_WINDOW_MS = 5 * 60 * 1000;
+    const blockedSet = new Set((profile && profile.blocked) || []);
+    let blockedRun = [];
+    const flushBlockedRun = () => {
+      if (blockedRun.length) { wrap.appendChild(renderBlockedGroup(blockedRun)); blockedRun = []; }
+    };
     snap.forEach(d => {
       const m = d.data();
       const ts = m.timestamp ? m.timestamp.toDate() : new Date();
       const dayKey = ts.toDateString();
       if (dayKey !== lastDay) {
+        flushBlockedRun();
         lastDay = dayKey;
         lastMsg = null; // never group across a day divider
         const div = document.createElement('div');
@@ -1236,10 +1277,17 @@ function listenConvoMessages() {
         div.textContent = ts.toLocaleDateString(undefined, { weekday:'long', month:'short', day:'numeric' });
         wrap.appendChild(div);
       }
+      if (blockedSet.has(m.uid) && profile && m.uid !== profile.uid) {
+        blockedRun.push({ id: d.id, m, ts });
+        lastMsg = { uid: m.uid, ts };
+        return;
+      }
+      flushBlockedRun();
       const grouped = !!(lastMsg && lastMsg.uid === m.uid && (ts - lastMsg.ts) < GROUP_WINDOW_MS);
       wrap.appendChild(renderMessage(d.id, m, ts, grouped));
       lastMsg = { uid: m.uid, ts };
     });
+    flushBlockedRun();
     wrap.scrollTop = wrap.scrollHeight;
   }, handleFirestoreError(currentConvoType === 'dm' ? 'messages' : 'messages'));
 }
@@ -1276,6 +1324,11 @@ async function openOrCreateDm(memberUids, groupName) {
   if (!profile) return;
   const allMembers = Array.from(new Set([profile.uid, ...memberUids]));
   if (allMembers.length < 2) { toast('Pick at least one person to message.', 'info'); return; }
+  const blockedTarget = memberUids.find(uid => isBlockedEitherWay(uid));
+  if (allMembers.length === 2 && blockedTarget) {
+    toast("You can't start a DM with that person — one of you has blocked the other.");
+    return;
+  }
 
   if (allMembers.length === 2) {
     const sorted = [...allMembers].sort();
@@ -1509,6 +1562,11 @@ $('profile-backdrop').addEventListener('click', (e) => { if (e.target.id === 'pr
 let ctxTargetUid = null;
 function openMemberContextMenu(x, y, uid) {
   ctxTargetUid = uid;
+  const isSelf = profile && uid === profile.uid;
+  const iBlockedThem = !!(profile && (profile.blocked || []).includes(uid));
+  $('ctx-create-dm').style.display = isSelf ? 'none' : '';
+  $('ctx-block').style.display = isSelf ? 'none' : '';
+  $('ctx-block').textContent = iBlockedThem ? '✅ Unblock' : '🚫 Block';
   const menu = $('member-context-menu');
   menu.style.left = x + 'px';
   menu.style.top = y + 'px';
@@ -1526,6 +1584,29 @@ $('ctx-create-dm').addEventListener('click', () => {
   if (ctxTargetUid) openOrCreateDm([ctxTargetUid]);
   closeMemberContextMenu();
 });
+$('ctx-block').addEventListener('click', async () => {
+  if (!ctxTargetUid || !profile) { closeMemberContextMenu(); return; }
+  const already = (profile.blocked || []).includes(ctxTargetUid);
+  try {
+    await updateDoc(doc(db, 'users', profile.uid), {
+      blocked: already ? arrayRemove(ctxTargetUid) : arrayUnion(ctxTargetUid)
+    });
+    toast(already ? 'Unblocked.' : "Blocked — they can't start a DM with you anymore.", 'info');
+  } catch (e) {
+    toast("Couldn't update block status.");
+  }
+  closeMemberContextMenu();
+});
+
+// True if either side has blocked the other — used to stop new DMs.
+// (Existing conversations from before a block still stay reachable —
+// this only guards the creation of a *new* thread.)
+function isBlockedEitherWay(otherUid) {
+  if (!profile || !otherUid) return false;
+  const mine = profile.blocked || [];
+  const theirs = (userCache[otherUid] && userCache[otherUid].blocked) || [];
+  return mine.includes(otherUid) || theirs.includes(profile.uid);
+}
 
 // ---------- new DM modal ----------
 let dmSelected = new Set();
@@ -1546,6 +1627,7 @@ function renderDmPickerList(filter) {
   const f = filter.trim().toLowerCase();
   const others = Object.values(userCache)
     .filter(u => profile && u.uid !== profile.uid)
+    .filter(u => !isBlockedEitherWay(u.uid))
     .filter(u => !f || (u.username || '').toLowerCase().includes(f))
     .sort((a, b) => (a.username || '').localeCompare(b.username || ''));
   if (!others.length) {
