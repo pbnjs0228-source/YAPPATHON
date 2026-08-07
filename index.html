@@ -302,11 +302,15 @@
   .tt-grid input::placeholder { color: var(--text-muted); opacity:.5; }
   .tt-week-sep { border-left:2px solid var(--accent) !important; }
   .tt-paste-row { display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap; }
-  .tt-img-drop { border:2px dashed var(--border); border-radius:10px; padding:20px 16px; text-align:center; color: var(--text-muted); font-size:12.5px; margin-top:10px; cursor:pointer; transition: border-color .15s ease, background .15s ease, opacity .15s ease; }
-  .tt-img-drop:hover, .tt-img-drop.drag { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
-  .tt-img-drop.busy { opacity:.6; pointer-events:none; }
-  .tt-divider { display:flex; align-items:center; gap:10px; color: var(--text-muted); font-size:11px; margin: 18px 0 4px; text-transform:uppercase; letter-spacing:.06em; }
-  .tt-divider::before, .tt-divider::after { content:''; height:1px; background: var(--border); flex:1; }
+
+  /* ---------- Context menu ---------- */
+  .ctx-menu { position:fixed; z-index:400; min-width:180px; background: var(--bg-elevated); border:1px solid var(--border); border-radius:12px; padding:6px; box-shadow: 0 14px 40px var(--shadow); animation: scaleIn .12s cubic-bezier(.22,1,.36,1) both; transform-origin: top left; }
+  .ctx-title { font-size:11px; color: var(--text-muted); padding:6px 10px 8px; border-bottom:1px solid var(--border); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ctx-item { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px; font-size:13px; color: var(--text); cursor:pointer; }
+  .ctx-item:hover { background: var(--bg-input); }
+  .ctx-item.danger { color: var(--danger); }
+  .member-row.blocked { opacity:.45; }
+  .member-tag { font-size:9px; text-transform:uppercase; letter-spacing:.05em; color: var(--text-muted); border:1px solid var(--border); border-radius:20px; padding:1px 5px; margin-left:4px; }
 
   #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); align-items:center; justify-content:center; z-index:200; cursor:zoom-out; animation: fadeIn .2s ease both; }
   #lightbox.open { display:flex; }
@@ -376,6 +380,10 @@
 
     <div class="section-label">Channels <button id="add-channel-btn" title="Create channel">+</button></div>
     <ul class="channel-list" id="channel-list"></ul>
+
+    <div class="section-label" style="margin-top:6px;">Direct Messages</div>
+    <ul class="channel-list" id="dm-list"></ul>
+    <div class="tt-hint" id="dm-empty" style="padding:0 16px;">Right-click a member to start a DM.</div>
 
     <div class="section-label" style="margin-top:6px;">Games</div>
     <div class="games-tab"><span>🎮</span> Multiplayer Games <span class="badge-soon">Soon</span></div>
@@ -473,16 +481,7 @@
           </select>
           <div class="tt-hint">This anchors your two-week rotation — set it correctly once and future weeks alternate automatically.</div>
 
-          <div class="settings-section-title" style="margin-top:18px;">Scan from a screenshot</div>
-          <div class="tt-img-drop" id="tt-img-drop" tabindex="0" role="button">
-            📷 Click to upload, drag a file here, or paste (Ctrl/Cmd+V) a screenshot of your timetable
-          </div>
-          <input type="file" id="tt-img-file" accept="image/*" style="display:none;" />
-          <div class="tt-hint">Reads the image using OpenRouter's free tier, with your own free API key — entered once and stored only in this browser — <button type="button" class="link-btn" id="tt-api-key-btn">set API key</button>.</div>
-
-          <div class="tt-divider"><span>or</span></div>
-
-          <label for="tt-paste">Paste as text</label>
+          <label for="tt-paste" style="margin-top:18px;">Paste as text</label>
           <textarea id="tt-paste" rows="4" placeholder="Paste 7 tab-separated rows, one per period, in order: Morning Registration, Period 1–6. Each row needs 10 columns: Week 1 Mon–Fri, then Week 2 Mon–Fri. (Copy straight from a spreadsheet version of your timetable.)"></textarea>
           <div class="tt-paste-row">
             <button class="btn" id="tt-parse-btn" type="button">Fill grid from paste</button>
@@ -500,27 +499,6 @@
     <div class="modal-actions">
       <button class="btn" id="settings-cancel">Cancel</button>
       <button class="btn primary" id="settings-save">Save changes</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== OpenRouter API key modal (for timetable image scan) ===== -->
-<div class="modal-backdrop" id="apikey-backdrop">
-  <div class="modal" style="max-width:420px;">
-    <h2>OpenRouter API key</h2>
-    <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0 0 4px;">
-      Used only in this browser to let a free vision model read your timetable screenshot. It's stored in this browser's local storage and sent directly to OpenRouter's API when you scan an image — never anywhere else. Because it's used straight from the browser, anyone with access to dev tools on this device could see it, so only do this on a device you trust. Get a free key (no credit card needed) at
-      <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.
-    </p>
-    <label for="apikey-input">API key</label>
-    <input type="password" id="apikey-input" placeholder="sk-or-v1-…" autocomplete="off" />
-    <div class="modal-err" id="apikey-err"></div>
-    <div class="modal-actions" style="justify-content:space-between;">
-      <button class="btn danger-ghost" id="apikey-clear" type="button">Clear saved key</button>
-      <div style="display:flex; gap:10px;">
-        <button class="btn" id="apikey-cancel" type="button">Cancel</button>
-        <button class="btn primary" id="apikey-save" type="button">Save</button>
-      </div>
     </div>
   </div>
 </div>
@@ -701,78 +679,6 @@ function currentWeekIndexFor(timetable, now) {
   const weeksDiff = Math.round((thisMonday - anchorMonday) / (7 * 86400000));
   return (((timetable.weekAnchorIndex || 0) + weeksDiff) % 2 + 2) % 2;
 }
-const TT_KEY_STORAGE = 'yapp-openrouter-key';
-// OpenRouter's free-model roster changes over time — if this stops
-// working, check openrouter.ai/models for a current free ":free" model
-// with image input and swap it in here.
-const TT_SCAN_MODEL = 'google/gemma-4-31b-it:free';
-function buildTimetablePrompt() {
-  const rows = PERIODS.map(p => `- "${p.label}" (${formatTimeRange(p.start, p.end)})`).join('\n');
-  return `This image is a school timetable. Convert it into a fixed grid.
-
-The grid has exactly these 7 rows, in this order:
-${rows}
-
-Each row has exactly 10 columns: Week 1 Monday, Tuesday, Wednesday, Thursday, Friday, then Week 2 Monday, Tuesday, Wednesday, Thursday, Friday — left to right, matching the order the day columns appear in the image.
-
-For each cell, extract just the subject name shown for that period on that day (a short class code in parentheses is fine, but leave out room numbers and teacher names). If a period from the list above isn't shown in the image, or a cell is blank, use an empty string "" for it. If the image only shows a single week (5 day columns, not 10), put that week's data in the first 5 columns (Week 1) and use "" for all of Week 2's columns.
-
-Respond with ONLY raw JSON in exactly this shape, no markdown code fences, no explanation:
-{"grid": [["","","","","","","","","",""], ... one array per row listed above, 7 arrays total, each with exactly 10 strings]}`;
-}
-async function parseTimetableImage(dataUrl) {
-  const apiKey = localStorage.getItem(TT_KEY_STORAGE);
-  if (!apiKey) { toast('Add your free OpenRouter API key first.', 'info'); openApiKeyModal(); return; }
-  const dropEl = $('tt-img-drop');
-  const originalHtml = dropEl.innerHTML;
-  dropEl.classList.add('busy');
-  dropEl.textContent = '⏳ Reading your timetable…';
-  try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': location.origin || 'https://yappathon.chat',
-        'X-Title': 'Yappathon'
-      },
-      body: JSON.stringify({
-        model: TT_SCAN_MODEL,
-        max_tokens: 2000,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'text', text: buildTimetablePrompt() },
-            { type: 'image_url', image_url: { url: dataUrl } }
-          ]
-        }]
-      })
-    });
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}));
-      throw new Error((errBody && errBody.error && errBody.error.message) || `Request failed (${res.status}).`);
-    }
-    const data = await res.json();
-    const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-    if (!text) throw new Error("Didn't get a readable response back.");
-    const cleaned = String(text).replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(cleaned);
-    if (!parsed || !Array.isArray(parsed.grid)) throw new Error('Unexpected response format.');
-    ttGrid = PERIODS.map((_, ri) => {
-      const row = Array.isArray(parsed.grid[ri]) ? parsed.grid[ri] : [];
-      return new Array(10).fill('').map((v, ci) => (typeof row[ci] === 'string' ? row[ci].slice(0, 60) : ''));
-    });
-    renderTtGridTable();
-    toast('Timetable read — check the grid below and adjust anything that looks off.', 'info');
-  } catch (err) {
-    console.error(err);
-    toast("Couldn't read that image: " + (err.message || 'unknown error') + ". You can still paste it as text below, or fill the grid in by hand.");
-  } finally {
-    dropEl.classList.remove('busy');
-    dropEl.innerHTML = originalHtml;
-  }
-}
-
 function computeCurrentClass(timetable, now) {
   now = now || new Date();
   if (!timetable || !timetable.enabled || !timetable.grid) return null;
@@ -802,6 +708,7 @@ let profile = null;       // firestore users/{uid} doc data
 let pendingSignupUsername = null; // staged username during email/password signup
 let authMode = 'signin';  // 'signin' | 'signup'
 let userCache = {};        // uid -> profile, live-updated
+let channelCache = {};     // channel id -> channel doc (includes DMs)
 let currentChannel = 'general';
 let unsubMessages = null;
 let unsubChannels = null;
@@ -1024,35 +931,91 @@ function listenProfile(uid) {
     $('me-role').textContent = profile.role === 'admin' ? 'Admin' : 'Member';
     renderAvatar($('me-avatar'), profile);
     renderAvatar($('settings-avatar'), profile);
+    renderChannelLists();
+    renderMembers(Object.values(userCache));
   });
 }
 
-// ---------- channels ----------
+// ---------- channels & DMs ----------
+function dmIdFor(uidA, uidB) {
+  return 'dm_' + [uidA, uidB].sort().join('_');
+}
+function dmPartnerUid(channel) {
+  if (!channel || !Array.isArray(channel.members) || !profile) return null;
+  return channel.members.find(uid => uid !== profile.uid) || profile.uid;
+}
+function dmTitle(channel) {
+  const other = dmPartnerUid(channel);
+  const u = other && userCache[other];
+  return (u && u.username) || (channel.memberNames && channel.memberNames[other]) || 'Direct message';
+}
+
 function listenChannels() {
   const q = query(collection(db, 'channels'), orderBy('createdAt', 'asc'));
   unsubChannels = onSnapshot(q, (snap) => {
-    const list = $('channel-list');
-    list.innerHTML = '';
-    snap.forEach(d => {
-      const name = d.id;
-      const li = document.createElement('li');
-      li.className = 'channel-item' + (name === currentChannel ? ' active' : '');
-      li.innerHTML = `<span class="hash">#</span><span>${escapeHtml(name)}</span>`;
-      li.addEventListener('click', () => switchChannel(name));
-      list.appendChild(li);
-    });
+    channelCache = {};
+    snap.forEach(d => { channelCache[d.id] = { id: d.id, ...d.data() }; });
+    renderChannelLists();
     // admin-only create button visibility
     $('add-channel-btn').style.display = (profile && profile.role === 'admin') ? '' : 'none';
   }, handleFirestoreError('channels'));
 }
 
+function renderChannelLists() {
+  const list = $('channel-list');
+  const dmList = $('dm-list');
+  list.innerHTML = '';
+  dmList.innerHTML = '';
+  let dmCount = 0;
+  Object.values(channelCache).forEach(c => {
+    const isDm = c.type === 'dm';
+    if (isDm && !(profile && Array.isArray(c.members) && c.members.includes(profile.uid))) return;
+    const li = document.createElement('li');
+    li.className = 'channel-item' + (c.id === currentChannel ? ' active' : '');
+    if (isDm) {
+      dmCount++;
+      li.innerHTML = `<span class="hash">@</span><span>${escapeHtml(dmTitle(c))}</span>`;
+    } else {
+      li.innerHTML = `<span class="hash">#</span><span>${escapeHtml(c.id)}</span>`;
+    }
+    li.addEventListener('click', () => switchChannel(c.id));
+    (isDm ? dmList : list).appendChild(li);
+  });
+  $('dm-empty').style.display = dmCount ? 'none' : '';
+}
+
+async function openDmWith(uid) {
+  if (!profile) return;
+  if (uid === profile.uid) { toast("You can't DM yourself.", 'info'); return; }
+  const other = userCache[uid];
+  const id = dmIdFor(profile.uid, uid);
+  try {
+    const ref = doc(db, 'channels', id);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        type: 'dm',
+        members: [profile.uid, uid].sort(),
+        memberNames: { [profile.uid]: profile.username, [uid]: (other && other.username) || 'Member' },
+        createdAt: serverTimestamp()
+      });
+      toast(`DM with ${(other && other.username) || 'member'} created.`, 'info');
+    }
+    switchChannel(id);
+  } catch (e) {
+    toast("Couldn't create that DM.");
+  }
+}
+
 function switchChannel(name) {
   currentChannel = name;
-  $('chan-name').textContent = name;
-  $('msg-input').placeholder = `Message #${name}`;
-  document.querySelectorAll('.channel-item').forEach(el => {
-    el.classList.toggle('active', el.textContent.trim() === name);
-  });
+  const c = channelCache[name];
+  const isDm = c && c.type === 'dm';
+  const title = isDm ? dmTitle(c) : name;
+  $('chan-name').textContent = title;
+  document.querySelector('.topbar .hash').textContent = isDm ? '@' : '#';
+  $('msg-input').placeholder = isDm ? `Message @${title}` : `Message #${name}`;
+  renderChannelLists();
   if (unsubMessages) unsubMessages();
   const q = query(collection(db, 'channels', name, 'messages'), orderBy('timestamp', 'asc'), limit(200));
   unsubMessages = onSnapshot(q, (snap) => {
@@ -1065,8 +1028,11 @@ function switchChannel(name) {
     let lastDay = null;
     let lastMsg = null; // { uid, ts } of previous rendered message, for grouping
     const GROUP_WINDOW_MS = 5 * 60 * 1000;
+    let rendered = 0;
     snap.forEach(d => {
       const m = d.data();
+      if (isHidden(m.uid)) return;
+      rendered++;
       const ts = m.timestamp ? m.timestamp.toDate() : new Date();
       const dayKey = ts.toDateString();
       if (dayKey !== lastDay) {
@@ -1081,6 +1047,9 @@ function switchChannel(name) {
       wrap.appendChild(renderMessage(d.id, m, ts, grouped));
       lastMsg = { uid: m.uid, ts };
     });
+    if (!rendered) {
+      wrap.innerHTML = `<div class="empty-state">Nothing to show here — every message is from someone you've blocked or muted.</div>`;
+    }
     wrap.scrollTop = wrap.scrollHeight;
   }, handleFirestoreError('messages'));
 }
@@ -1103,6 +1072,12 @@ function renderMessage(id, m, ts, grouped) {
     renderAvatar(av, { uid: m.uid, username: m.username, photoBase64: m.photoBase64 });
     av.addEventListener('click', () => openProfile(m.uid));
     row.appendChild(av);
+  }
+  if (m.uid) {
+    row.addEventListener('contextmenu', (e) => {
+      if (e.target.closest('.msg-text') || e.target.closest('.msg-img')) return;
+      openMemberContextMenu(e, m.uid);
+    });
   }
 
   const body = document.createElement('div');
@@ -1183,6 +1158,12 @@ function listenMembers() {
   }, handleFirestoreError('members'));
   setInterval(() => renderMembers(Object.values(userCache)), 15000);
 }
+function makeTag(text) {
+  const el = document.createElement('span');
+  el.className = 'member-tag';
+  el.textContent = text;
+  return el;
+}
 function renderMembers(list) {
   const now = Date.now();
   list.sort((a,b) => (a.username||'').localeCompare(b.username||''));
@@ -1217,10 +1198,80 @@ function renderMembers(list) {
       clsEl.textContent = cls.subject ? `📘 ${cls.subject} · ${cls.period}` : `${cls.period} · free`;
       meta.appendChild(clsEl);
     }
+    if (isBlocked(u.uid)) { row.classList.add('blocked'); name.appendChild(makeTag('Blocked')); }
+    else if (isMuted(u.uid)) { name.appendChild(makeTag('Muted')); }
     row.appendChild(meta);
     row.addEventListener('click', () => openProfile(u.uid));
+    row.addEventListener('contextmenu', (e) => openMemberContextMenu(e, u.uid));
     wrap.appendChild(row);
   });
+}
+
+// ---------- block / mute ----------
+function isBlocked(uid) { return !!(profile && Array.isArray(profile.blocked) && profile.blocked.includes(uid)); }
+function isMuted(uid) { return !!(profile && Array.isArray(profile.muted) && profile.muted.includes(uid)); }
+function isHidden(uid) { return isBlocked(uid) || isMuted(uid); }
+
+async function toggleListMembership(field, uid) {
+  if (!profile) return;
+  const current = Array.isArray(profile[field]) ? profile[field] : [];
+  const next = current.includes(uid) ? current.filter(x => x !== uid) : current.concat(uid);
+  try {
+    await updateDoc(doc(db, 'users', profile.uid), { [field]: next });
+    profile = { ...profile, [field]: next };
+    renderMembers(Object.values(userCache));
+    switchChannel(currentChannel);
+  } catch (e) {
+    toast("Couldn't save that change.");
+  }
+}
+
+// ---------- member context menu ----------
+let ctxMenuEl = null;
+function closeCtxMenu() {
+  if (ctxMenuEl) { ctxMenuEl.remove(); ctxMenuEl = null; }
+}
+document.addEventListener('click', closeCtxMenu);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCtxMenu(); });
+window.addEventListener('resize', closeCtxMenu);
+
+function openMemberContextMenu(e, uid) {
+  e.preventDefault();
+  closeCtxMenu();
+  const u = userCache[uid];
+  if (!u) return;
+  const isSelf = profile && uid === profile.uid;
+  const items = [];
+  items.push({ label: '👤 View profile', onClick: () => openProfile(uid) });
+  if (!isSelf) {
+    const existing = profile && channelCache[dmIdFor(profile.uid, uid)];
+    items.push({ label: existing ? '💬 Open DM' : '💬 Create DM', onClick: () => openDmWith(uid) });
+    items.push({ label: isMuted(uid) ? '🔊 Unmute' : '🔇 Mute', onClick: () => toggleListMembership('muted', uid) });
+    items.push({ label: isBlocked(uid) ? '✓ Unblock' : '🚫 Block', danger: !isBlocked(uid), onClick: () => toggleListMembership('blocked', uid) });
+  }
+
+  const menu = document.createElement('div');
+  menu.className = 'ctx-menu';
+  const title = document.createElement('div');
+  title.className = 'ctx-title';
+  title.textContent = u.username || 'Member';
+  menu.appendChild(title);
+  items.forEach(it => {
+    const el = document.createElement('div');
+    el.className = 'ctx-item' + (it.danger ? ' danger' : '');
+    el.textContent = it.label;
+    el.addEventListener('click', (ev) => { ev.stopPropagation(); closeCtxMenu(); it.onClick(); });
+    menu.appendChild(el);
+  });
+  menu.style.left = '0px';
+  menu.style.top = '0px';
+  document.body.appendChild(menu);
+  const rect = menu.getBoundingClientRect();
+  const x = Math.min(e.clientX, window.innerWidth - rect.width - 8);
+  const y = Math.min(e.clientY, window.innerHeight - rect.height - 8);
+  menu.style.left = Math.max(8, x) + 'px';
+  menu.style.top = Math.max(8, y) + 'px';
+  ctxMenuEl = menu;
 }
 
 // ---------- member profile popup ----------
@@ -1382,65 +1433,6 @@ $('tt-parse-btn').addEventListener('click', () => {
 $('tt-clear-btn').addEventListener('click', () => {
   ttGrid = emptyTtGrid();
   renderTtGridTable();
-});
-
-// ---------- timetable image scan ----------
-function openApiKeyModal() {
-  $('apikey-input').value = localStorage.getItem(TT_KEY_STORAGE) || '';
-  $('apikey-err').style.display = 'none';
-  $('apikey-backdrop').classList.add('open');
-}
-$('tt-api-key-btn').addEventListener('click', () => openApiKeyModal());
-$('apikey-cancel').addEventListener('click', () => $('apikey-backdrop').classList.remove('open'));
-$('apikey-backdrop').addEventListener('click', (e) => { if (e.target.id === 'apikey-backdrop') $('apikey-backdrop').classList.remove('open'); });
-$('apikey-save').addEventListener('click', () => {
-  const val = $('apikey-input').value.trim();
-  if (!val) { $('apikey-err').textContent = 'Enter a key, or use "Clear saved key" to remove it.'; $('apikey-err').style.display = 'block'; return; }
-  localStorage.setItem(TT_KEY_STORAGE, val);
-  $('apikey-backdrop').classList.remove('open');
-  toast('API key saved to this browser.', 'info');
-});
-$('apikey-clear').addEventListener('click', () => {
-  localStorage.removeItem(TT_KEY_STORAGE);
-  $('apikey-input').value = '';
-  toast('API key cleared.', 'info');
-});
-
-async function handleTimetableImageFile(file) {
-  if (!file.type || !file.type.startsWith('image/')) { toast('That file doesn\'t look like an image.'); return; }
-  try {
-    const resized = await resizeImage(file, 1500, 0.85);
-    await parseTimetableImage(resized);
-  } catch (err) {
-    toast(err.message || "Couldn't read that image.");
-  }
-}
-$('tt-img-drop').addEventListener('click', () => $('tt-img-file').click());
-$('tt-img-drop').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('tt-img-file').click(); }
-});
-$('tt-img-file').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  e.target.value = '';
-  if (file) await handleTimetableImageFile(file);
-});
-['dragover'].forEach(evt => $('tt-img-drop').addEventListener(evt, (e) => { e.preventDefault(); $('tt-img-drop').classList.add('drag'); }));
-['dragleave', 'drop'].forEach(evt => $('tt-img-drop').addEventListener(evt, (e) => { e.preventDefault(); $('tt-img-drop').classList.remove('drag'); }));
-$('tt-img-drop').addEventListener('drop', async (e) => {
-  const file = e.dataTransfer.files && e.dataTransfer.files[0];
-  if (file) await handleTimetableImageFile(file);
-});
-document.addEventListener('paste', async (e) => {
-  const paneOpen = $('settings-backdrop').classList.contains('open') && $('pane-timetable').classList.contains('active');
-  if (!paneOpen) return;
-  const items = (e.clipboardData && e.clipboardData.items) || [];
-  for (const item of items) {
-    if (item.type && item.type.startsWith('image/')) {
-      const file = item.getAsFile();
-      if (file) { e.preventDefault(); await handleTimetableImageFile(file); }
-      break;
-    }
-  }
 });
 
 $('open-settings').addEventListener('click', () => {
