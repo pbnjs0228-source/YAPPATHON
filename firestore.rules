@@ -2,8 +2,7 @@ rules_version = '2';
 
 // Matches the data model in index.html:
 //   users/{uid}                         -> profile docs, keyed by auth uid
-//   channels/{channelId}                -> public channel docs (name, createdAt)
-//                                          OR a DM ({ type: 'dm', members, memberNames, createdAt })
+//   channels/{channelId}                -> channel docs (name, createdAt)
 //   channels/{channelId}/messages/{id}  -> chat messages
 //
 // Admin model:
@@ -35,17 +34,22 @@ rules_version = '2';
 // - Shape is fully validated (fixed row/col counts, per-cell type + size)
 //   so a client can't smuggle extra rows/columns or oversized cells.
 //
-// Block / mute (member right-click menu):
-// - `blocked` and `muted` are owner-only string arrays of uids on the
-//   acting user's own doc. They're purely a client-side filter, so they
-//   only need to be writable by their owner.
-//
-// Direct messages (member right-click menu > Create DM):
-// - A DM is a channel doc with type == 'dm' and a two-uid `members` list,
-//   at the deterministic id `dm_<uidA>_<uidB>` (uids sorted) so both sides
-//   derive the same id and can't create duplicates.
-// - Either member may create it; only its two members can read the doc or
-//   read/write its messages. Membership is immutable once created.
+// NOTE: an earlier version of this file added DM channels (type=='dm',
+// members, memberNames) and owner-only block/mute lists. Neither is
+// actually implemented anywhere in index.html — no DM creation, no DM UI,
+// no block/mute code. Worse, the DM-aware channel read rule
+// (isDmChannel()/channelDoc(), a get() keyed on each document's own path)
+// broke the *real*, working channel list: listenChannels() runs an
+// unconstrained list query over the whole `channels` collection, and
+// Firestore rejects any list query where per-document rule logic can't
+// be proven safe ahead of time — every possible result has to be
+// readable independent of its own content, or the whole query is denied.
+// That's what caused the "Firestore permissions are blocking reads/
+// writes" banner. Removed the dead DM/block/mute rule logic; timetable
+// stayed since it's real and in use. If DMs get built for real later,
+// give them their own top-level `dms` collection with a
+// `where('members','array-contains',uid)`-constrained query — that
+// pattern is provably safe for list queries, unlike this one.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -61,8 +65,10 @@ service cloud.firestore {
 
     // Full admin check: root email OR a role of 'admin' actually stored
     // on the acting user's own doc (i.e. someone a root/prior admin
-    // promoted). get() calls to the same path are cached per-request,
-    // so calling this more than once in a rule is cheap.
+    // promoted). get() calls to the same fixed path are cached
+    // per-request, so calling this more than once in a rule is cheap.
+    // Safe for list queries too: the path only depends on
+    // request.auth.uid, never on the documents being returned.
     function isAdmin() {
       return isRootAdminEmail() ||
         (isSignedIn() &&
@@ -99,12 +105,6 @@ service cloud.firestore {
         && isValidTtRow(tt.grid[6]);
     }
 
-    // A blocked/muted list: uids only, capped so it can't be used as
-    // free storage.
-    function isValidUidList(l) {
-      return l is list && l.size() <= 500;
-    }
-
     // ---------------- users/{uid} ----------------
     match /users/{uid} {
       allow read: if isSignedIn();
@@ -112,8 +112,8 @@ service cloud.firestore {
       // First-login doc creation (ensureUserDoc). Only the root email can
       // ever create itself pre-admin; everyone else starts as 'member' —
       // getting promoted later is always a separate, explicit admin action.
-      // No `timetable`/`blocked`/`muted` fields yet at this point — they're
-      // only ever added later via the update path below.
+      // No `timetable` field yet at this point — it's only ever added
+      // later via the update path below.
       allow create: if isSignedIn()
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(
@@ -131,9 +131,8 @@ service cloud.firestore {
 
       // Two distinct ways to update a user doc:
       //  (a) the owner updating their own profile (username/bio/avatar/
-      //      lastSeen/timetable/blocked/muted) — role just carries forward
-      //      unchanged, except the root email is always force-synced to
-      //      'admin'.
+      //      lastSeen/timetable) — role just carries forward unchanged,
+      //      except the root email is always force-synced to 'admin'.
       //  (b) an existing admin flipping ONLY the `role` field on someone
       //      ELSE's doc, to 'admin' or 'member' — this is the admin-grant
       //      action from the profile popup.
@@ -141,7 +140,7 @@ service cloud.firestore {
         (
           request.auth.uid == uid
           && request.resource.data.keys().hasOnly(
-               ['uid', 'email', 'username', 'photoBase64', 'bio', 'role', 'createdAt', 'lastSeen', 'timetable', 'blocked', 'muted'])
+               ['uid', 'email', 'username', 'photoBase64', 'bio', 'role', 'createdAt', 'lastSeen', 'timetable'])
           && request.resource.data.uid == resource.data.uid
           && request.resource.data.email == resource.data.email
           && request.resource.data.createdAt == resource.data.createdAt
@@ -152,8 +151,6 @@ service cloud.firestore {
           && (request.resource.data.photoBase64 == null || request.resource.data.photoBase64 is string)
           && (!('bio' in request.resource.data) || (request.resource.data.bio is string && request.resource.data.bio.size() <= 160))
           && (!('timetable' in request.resource.data) || isValidTimetable(request.resource.data.timetable))
-          && (!('blocked' in request.resource.data) || isValidUidList(request.resource.data.blocked))
-          && (!('muted' in request.resource.data) || isValidUidList(request.resource.data.muted))
         ) || (
           isAdmin()
           && request.auth.uid != uid
@@ -167,57 +164,24 @@ service cloud.firestore {
 
     // ---------------- channels/{channelId} ----------------
     match /channels/{channelId} {
-
-      function channelDoc() {
-        return get(/databases/$(database)/documents/channels/$(channelId)).data;
-      }
-      function isDmChannel() {
-        return exists(/databases/$(database)/documents/channels/$(channelId))
-          && channelDoc().get('type', 'channel') == 'dm';
-      }
-      // Public channels are readable by everyone signed in; a DM only by
-      // its two members.
-      function canAccessChannel() {
-        return isSignedIn()
-          && (!isDmChannel() || request.auth.uid in channelDoc().members);
-      }
-
-      allow read: if canAccessChannel();
+      allow read: if isSignedIn();
 
       // Any signed-in user can silently create the two default channels
-      // (ensureDefaultChannels runs for every user on login). Any other
-      // named channel requires admin, matching the UI's admin-only "+"
-      // button. Separately, any signed-in user can create a DM they are
-      // a member of, at its deterministic sorted-uid id.
-      allow create: if isSignedIn() && (
-        (
-          (isAdmin() || channelId in ['general', 'random'])
-          && request.resource.data.keys().hasOnly(['name', 'createdAt'])
-          && request.resource.data.name == channelId
-          && request.resource.data.createdAt == request.time
-        ) || (
-          request.resource.data.keys().hasOnly(['type', 'members', 'memberNames', 'createdAt'])
-          && request.resource.data.type == 'dm'
-          && request.resource.data.members is list
-          && request.resource.data.members.size() == 2
-          && request.resource.data.members[0] is string
-          && request.resource.data.members[1] is string
-          && request.resource.data.members[0] < request.resource.data.members[1]
-          && request.auth.uid in request.resource.data.members
-          && channelId == 'dm_' + request.resource.data.members[0] + '_' + request.resource.data.members[1]
-          && request.resource.data.memberNames is map
-          && request.resource.data.memberNames.keys().hasOnly(request.resource.data.members)
-          && request.resource.data.createdAt == request.time
-        )
-      );
+      // (ensureDefaultChannels runs for every user on login). Anything
+      // else requires admin, matching the UI's admin-only "+" button.
+      allow create: if isSignedIn()
+        && (isAdmin() || channelId in ['general', 'random'])
+        && request.resource.data.keys().hasOnly(['name', 'createdAt'])
+        && request.resource.data.name == channelId
+        && request.resource.data.createdAt == request.time;
 
-      allow update, delete: if false; // no rename/delete-channel or leave-DM feature
+      allow update, delete: if false; // no rename/delete-channel feature
 
       // ---------------- channels/{channelId}/messages/{messageId} ----------------
       match /messages/{messageId} {
-        allow read: if canAccessChannel();
+        allow read: if isSignedIn();
 
-        allow create: if canAccessChannel()
+        allow create: if isSignedIn()
           && request.resource.data.keys().hasOnly(
                ['uid', 'username', 'role', 'photoBase64', 'text', 'imageBase64', 'timestamp'])
           && request.resource.data.uid == request.auth.uid
@@ -240,5 +204,109 @@ service cloud.firestore {
         allow update: if false; // no message-edit feature
       }
     }
+
+    // ---------------- dms/{dmId} ----------------
+    // A DM is either:
+    //   1-1:   { type: 'dm', members: [uidA, uidB] (sorted), memberNames, createdAt }
+    //          at the deterministic id dm_<uidA>_<uidB>, so both sides land
+    //          on the same doc and can't create duplicates.
+    //   group: { type: 'group', members: [uid, ...] (3-20), memberNames,
+    //            name, photoBase64, createdBy, createdAt } at a random
+    //          addDoc() id.
+    // Read access is membership-gated. This is the standard Firestore-safe
+    // pattern for a gated LIST query: listenDms() queries with
+    // where('members','array-contains', uid), which structurally
+    // guarantees the read rule for every possible result — unlike the
+    // channels list bug fixed above, this get()-free, query-shape-based
+    // check is provably safe for `list` operations.
+    match /dms/{dmId} {
+      // resource == null covers the pre-existence-check getDoc() in
+      // openOrCreateDm() — the very first DM between two people reads a
+      // dmId that doesn't exist yet. Without this guard, resource.data
+      // throws on a nonexistent doc and Firestore denies the read with
+      // "Missing or insufficient permissions", even though there's no
+      // data to leak from a doc that isn't there.
+      allow read: if isSignedIn() && (resource == null || request.auth.uid in resource.data.members);
+
+      allow create: if isSignedIn() && request.auth.uid in request.resource.data.members && (
+        (
+          // 1-1 DM
+          request.resource.data.keys().hasOnly(['type', 'members', 'memberNames', 'createdAt'])
+          && request.resource.data.type == 'dm'
+          && request.resource.data.members is list
+          && request.resource.data.members.size() == 2
+          && request.resource.data.members[0] is string
+          && request.resource.data.members[1] is string
+          && request.resource.data.members[0] < request.resource.data.members[1]
+          && dmId == 'dm_' + request.resource.data.members[0] + '_' + request.resource.data.members[1]
+          && request.resource.data.memberNames is map
+          && request.resource.data.createdAt == request.time
+        ) || (
+          // Group DM
+          request.resource.data.keys().hasOnly(['type', 'members', 'memberNames', 'name', 'photoBase64', 'createdBy', 'createdAt'])
+          && request.resource.data.type == 'group'
+          && request.resource.data.members is list
+          && request.resource.data.members.size() >= 3
+          && request.resource.data.members.size() <= 20
+          && request.resource.data.memberNames is map
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 1
+          && request.resource.data.name.size() <= 60
+          && (request.resource.data.photoBase64 == null || request.resource.data.photoBase64 is string)
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdAt == request.time
+        )
+      );
+
+      // Only a group's name/photo can be changed, only by an existing
+      // member, matching the "group settings" UI (rename / change photo).
+      // Membership itself is immutable — no add/remove-member feature yet.
+      allow update: if isSignedIn()
+        && request.auth.uid in resource.data.members
+        && resource.data.type == 'group'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photoBase64'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 60
+        && (request.resource.data.photoBase64 == null || (request.resource.data.photoBase64 is string && request.resource.data.photoBase64.size() < 500000));
+
+      allow delete: if false; // no delete/leave-group feature
+
+      // ---------------- dms/{dmId}/messages/{messageId} ----------------
+      match /messages/{messageId} {
+        // dmId is fixed for the whole subcollection query (it's a path
+        // segment, not query result data), so this get() is on a path
+        // that doesn't vary per returned document — safe for list queries,
+        // same as the channel-messages pattern above.
+        function isDmMember() {
+          return isSignedIn()
+            && request.auth.uid in get(/databases/$(database)/documents/dms/$(dmId)).data.members;
+        }
+
+        allow read: if isDmMember();
+
+        allow create: if isDmMember()
+          && request.resource.data.keys().hasOnly(
+               ['uid', 'username', 'role', 'photoBase64', 'text', 'imageBase64', 'timestamp'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.role == (isAdmin() ? 'admin' : 'member')
+          && request.resource.data.username is string
+          && request.resource.data.username.size() >= 1
+          && request.resource.data.username.size() <= 40
+          && (request.resource.data.photoBase64 == null || request.resource.data.photoBase64 is string)
+          && (request.resource.data.text == null
+              || (request.resource.data.text is string && request.resource.data.text.size() <= 4000))
+          && (request.resource.data.imageBase64 == null
+              || (request.resource.data.imageBase64 is string && request.resource.data.imageBase64.size() < 900000))
+          && !(request.resource.data.text == null && request.resource.data.imageBase64 == null)
+          && request.resource.data.timestamp == request.time;
+
+        allow delete: if isDmMember()
+          && (resource.data.uid == request.auth.uid || isAdmin());
+
+        allow update: if false; // no message-edit feature
+      }
+    }
   }
 }
+
