@@ -301,6 +301,11 @@
   .tt-grid input::placeholder { color: var(--text-muted); opacity:.5; }
   .tt-week-sep { border-left:2px solid var(--accent) !important; }
   .tt-paste-row { display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap; }
+  .tt-img-drop { border:2px dashed var(--border); border-radius:10px; padding:20px 16px; text-align:center; color: var(--text-muted); font-size:12.5px; margin-top:10px; cursor:pointer; transition: border-color .15s ease, background .15s ease, opacity .15s ease; }
+  .tt-img-drop:hover, .tt-img-drop.drag { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+  .tt-img-drop.busy { opacity:.6; pointer-events:none; }
+  .tt-divider { display:flex; align-items:center; gap:10px; color: var(--text-muted); font-size:11px; margin: 18px 0 4px; text-transform:uppercase; letter-spacing:.06em; }
+  .tt-divider::before, .tt-divider::after { content:''; height:1px; background: var(--border); flex:1; }
 
   #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); align-items:center; justify-content:center; z-index:200; cursor:zoom-out; animation: fadeIn .2s ease both; }
   #lightbox.open { display:flex; }
@@ -467,7 +472,16 @@
           </select>
           <div class="tt-hint">This anchors your two-week rotation — set it correctly once and future weeks alternate automatically.</div>
 
-          <label for="tt-paste">Paste your timetable</label>
+          <div class="settings-section-title" style="margin-top:18px;">Scan from a screenshot</div>
+          <div class="tt-img-drop" id="tt-img-drop" tabindex="0" role="button">
+            📷 Click to upload, drag a file here, or paste (Ctrl/Cmd+V) a screenshot of your timetable
+          </div>
+          <input type="file" id="tt-img-file" accept="image/*" style="display:none;" />
+          <div class="tt-hint">Reads the image with Claude using your own Anthropic API key, entered once and stored only in this browser — <button type="button" class="link-btn" id="tt-api-key-btn">set API key</button>.</div>
+
+          <div class="tt-divider"><span>or</span></div>
+
+          <label for="tt-paste">Paste as text</label>
           <textarea id="tt-paste" rows="4" placeholder="Paste 7 tab-separated rows, one per period, in order: Morning Registration, Period 1–6. Each row needs 10 columns: Week 1 Mon–Fri, then Week 2 Mon–Fri. (Copy straight from a spreadsheet version of your timetable.)"></textarea>
           <div class="tt-paste-row">
             <button class="btn" id="tt-parse-btn" type="button">Fill grid from paste</button>
@@ -485,6 +499,27 @@
     <div class="modal-actions">
       <button class="btn" id="settings-cancel">Cancel</button>
       <button class="btn primary" id="settings-save">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Anthropic API key modal (for timetable image scan) ===== -->
+<div class="modal-backdrop" id="apikey-backdrop">
+  <div class="modal" style="max-width:420px;">
+    <h2>Anthropic API key</h2>
+    <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0 0 4px;">
+      Used only in this browser to let Claude read your timetable screenshot. It's stored in this browser's local storage and sent directly to Anthropic's API when you scan an image — never anywhere else. Because it's used straight from the browser, anyone with access to dev tools on this device could see it, so only do this on a device you trust. Get a key at
+      <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.
+    </p>
+    <label for="apikey-input">API key</label>
+    <input type="password" id="apikey-input" placeholder="sk-ant-…" autocomplete="off" />
+    <div class="modal-err" id="apikey-err"></div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <button class="btn danger-ghost" id="apikey-clear" type="button">Clear saved key</button>
+      <div style="display:flex; gap:10px;">
+        <button class="btn" id="apikey-cancel" type="button">Cancel</button>
+        <button class="btn primary" id="apikey-save" type="button">Save</button>
+      </div>
     </div>
   </div>
 </div>
@@ -665,6 +700,77 @@ function currentWeekIndexFor(timetable, now) {
   const weeksDiff = Math.round((thisMonday - anchorMonday) / (7 * 86400000));
   return (((timetable.weekAnchorIndex || 0) + weeksDiff) % 2 + 2) % 2;
 }
+const TT_KEY_STORAGE = 'yapp-anthropic-key';
+function buildTimetablePrompt() {
+  const rows = PERIODS.map(p => `- "${p.label}" (${formatTimeRange(p.start, p.end)})`).join('\n');
+  return `This image is a school timetable. Convert it into a fixed grid.
+
+The grid has exactly these 7 rows, in this order:
+${rows}
+
+Each row has exactly 10 columns: Week 1 Monday, Tuesday, Wednesday, Thursday, Friday, then Week 2 Monday, Tuesday, Wednesday, Thursday, Friday — left to right, matching the order the day columns appear in the image.
+
+For each cell, extract just the subject name shown for that period on that day (a short class code in parentheses is fine, but leave out room numbers and teacher names). If a period from the list above isn't shown in the image, or a cell is blank, use an empty string "" for it. If the image only shows a single week (5 day columns, not 10), put that week's data in the first 5 columns (Week 1) and use "" for all of Week 2's columns.
+
+Respond with ONLY raw JSON in exactly this shape, no markdown code fences, no explanation:
+{"grid": [["","","","","","","","","",""], ... one array per row listed above, 7 arrays total, each with exactly 10 strings]}`;
+}
+async function parseTimetableImage(dataUrl) {
+  const apiKey = localStorage.getItem(TT_KEY_STORAGE);
+  if (!apiKey) { toast('Add your Anthropic API key first.', 'info'); openApiKeyModal(); return; }
+  const dropEl = $('tt-img-drop');
+  const originalHtml = dropEl.innerHTML;
+  dropEl.classList.add('busy');
+  dropEl.textContent = '⏳ Reading your timetable…';
+  try {
+    const commaIdx = dataUrl.indexOf(',');
+    const base64 = dataUrl.slice(commaIdx + 1);
+    const mediaType = dataUrl.slice(5, dataUrl.indexOf(';'));
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-5',
+        max_tokens: 2000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            { type: 'text', text: buildTimetablePrompt() }
+          ]
+        }]
+      })
+    });
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error((errBody && errBody.error && errBody.error.message) || `Request failed (${res.status}).`);
+    }
+    const data = await res.json();
+    const textBlock = (data.content || []).find(b => b.type === 'text');
+    if (!textBlock) throw new Error("Didn't get a readable response back.");
+    const cleaned = textBlock.text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    if (!parsed || !Array.isArray(parsed.grid)) throw new Error('Unexpected response format.');
+    ttGrid = PERIODS.map((_, ri) => {
+      const row = Array.isArray(parsed.grid[ri]) ? parsed.grid[ri] : [];
+      return new Array(10).fill('').map((v, ci) => (typeof row[ci] === 'string' ? row[ci].slice(0, 60) : ''));
+    });
+    renderTtGridTable();
+    toast('Timetable read — check the grid below and adjust anything that looks off.', 'info');
+  } catch (err) {
+    console.error(err);
+    toast("Couldn't read that image: " + (err.message || 'unknown error') + ". You can still paste it as text below, or fill the grid in by hand.");
+  } finally {
+    dropEl.classList.remove('busy');
+    dropEl.innerHTML = originalHtml;
+  }
+}
+
 function computeCurrentClass(timetable, now) {
   now = now || new Date();
   if (!timetable || !timetable.enabled || !timetable.grid) return null;
@@ -1274,6 +1380,65 @@ $('tt-parse-btn').addEventListener('click', () => {
 $('tt-clear-btn').addEventListener('click', () => {
   ttGrid = emptyTtGrid();
   renderTtGridTable();
+});
+
+// ---------- timetable image scan ----------
+function openApiKeyModal() {
+  $('apikey-input').value = localStorage.getItem(TT_KEY_STORAGE) || '';
+  $('apikey-err').style.display = 'none';
+  $('apikey-backdrop').classList.add('open');
+}
+$('tt-api-key-btn').addEventListener('click', () => openApiKeyModal());
+$('apikey-cancel').addEventListener('click', () => $('apikey-backdrop').classList.remove('open'));
+$('apikey-backdrop').addEventListener('click', (e) => { if (e.target.id === 'apikey-backdrop') $('apikey-backdrop').classList.remove('open'); });
+$('apikey-save').addEventListener('click', () => {
+  const val = $('apikey-input').value.trim();
+  if (!val) { $('apikey-err').textContent = 'Enter a key, or use "Clear saved key" to remove it.'; $('apikey-err').style.display = 'block'; return; }
+  localStorage.setItem(TT_KEY_STORAGE, val);
+  $('apikey-backdrop').classList.remove('open');
+  toast('API key saved to this browser.', 'info');
+});
+$('apikey-clear').addEventListener('click', () => {
+  localStorage.removeItem(TT_KEY_STORAGE);
+  $('apikey-input').value = '';
+  toast('API key cleared.', 'info');
+});
+
+async function handleTimetableImageFile(file) {
+  if (!file.type || !file.type.startsWith('image/')) { toast('That file doesn\'t look like an image.'); return; }
+  try {
+    const resized = await resizeImage(file, 1500, 0.85);
+    await parseTimetableImage(resized);
+  } catch (err) {
+    toast(err.message || "Couldn't read that image.");
+  }
+}
+$('tt-img-drop').addEventListener('click', () => $('tt-img-file').click());
+$('tt-img-drop').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('tt-img-file').click(); }
+});
+$('tt-img-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (file) await handleTimetableImageFile(file);
+});
+['dragover'].forEach(evt => $('tt-img-drop').addEventListener(evt, (e) => { e.preventDefault(); $('tt-img-drop').classList.add('drag'); }));
+['dragleave', 'drop'].forEach(evt => $('tt-img-drop').addEventListener(evt, (e) => { e.preventDefault(); $('tt-img-drop').classList.remove('drag'); }));
+$('tt-img-drop').addEventListener('drop', async (e) => {
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (file) await handleTimetableImageFile(file);
+});
+document.addEventListener('paste', async (e) => {
+  const paneOpen = $('settings-backdrop').classList.contains('open') && $('pane-timetable').classList.contains('active');
+  if (!paneOpen) return;
+  const items = (e.clipboardData && e.clipboardData.items) || [];
+  for (const item of items) {
+    if (item.type && item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      if (file) { e.preventDefault(); await handleTimetableImageFile(file); }
+      break;
+    }
+  }
 });
 
 $('open-settings').addEventListener('click', () => {
