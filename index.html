@@ -346,6 +346,12 @@
   .toast.leaving { animation: toastOut .22s ease forwards; }
   .toast.info { border-left-color: var(--accent); }
 
+  [data-theme="rose"] { --bg:#1A1015;--bg-alt:#24151D;--bg-elevated:#30202A;--bg-input:#382530;--border:#4A303C;--text:#F4E8ED;--text-muted:#B99BA8;--accent:#FF6F9F;--accent-hover:#FF86AD;--accent-contrast:#1A1015;--accent-soft:rgba(255,111,159,.15);--online:#55C98A;--danger:#FF6677;--shadow:rgba(0,0,0,.5); }
+  [data-theme="ocean"] { --bg:#0B151A;--bg-alt:#102027;--bg-elevated:#172B35;--bg-input:#1C333E;--border:#294650;--text:#E5F6FA;--text-muted:#86AAB4;--accent:#39C6D8;--accent-hover:#5BD4E2;--accent-contrast:#081316;--accent-soft:rgba(57,198,216,.15);--online:#4FD18A;--danger:#FF6670;--shadow:rgba(0,0,0,.5); }
+  [data-theme="lavender"] { --bg:#15121C;--bg-alt:#1E1928;--bg-elevated:#282238;--bg-input:#302944;--border:#403653;--text:#EEE9FA;--text-muted:#A69BB9;--accent:#B18CFF;--accent-hover:#C1A3FF;--accent-contrast:#15121C;--accent-soft:rgba(177,140,255,.15);--online:#62D89A;--danger:#FF6D83;--shadow:rgba(0,0,0,.5); }
+  [data-theme="sunset"] { --bg:#1A1210;--bg-alt:#261916;--bg-elevated:#33211B;--bg-input:#3B2720;--border:#52362A;--text:#F8ECE5;--text-muted:#BDA49A;--accent:#FF9A4D;--accent-hover:#FFAD69;--accent-contrast:#1A1210;--accent-soft:rgba(255,154,77,.15);--online:#63D18A;--danger:#FF6971;--shadow:rgba(0,0,0,.5); }
+  [data-theme="slate"] { --bg:#11151A;--bg-alt:#181D24;--bg-elevated:#202731;--bg-input:#262E39;--border:#343E4C;--text:#E9EDF2;--text-muted:#8D99A8;--accent:#A7B8CC;--accent-hover:#BAC8D8;--accent-contrast:#11151A;--accent-soft:rgba(167,184,204,.15);--online:#58CC8B;--danger:#F06A72;--shadow:rgba(0,0,0,.5); }
+  .app-dialog-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.58);align-items:center;justify-content:center;z-index:500;padding:20px;animation:fadeIn .16s ease both}.app-dialog-backdrop.open{display:flex}.app-dialog{width:min(420px,calc(100vw - 40px));background:var(--bg-elevated);border:1px solid var(--border);border-radius:16px;padding:22px;box-shadow:0 24px 70px var(--shadow);animation:scaleIn .2s cubic-bezier(.22,1,.36,1) both}.app-dialog h2{margin:0 0 8px;font-size:17px}.app-dialog p{margin:0;color:var(--text-muted);font-size:13.5px;line-height:1.5;white-space:pre-wrap}.app-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.app-dialog-actions .danger{color:var(--danger);border-color:var(--danger)}.ui-icon{width:16px;height:16px;flex:0 0 auto;display:block;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.icon-btn.icon-label{align-items:center;gap:7px;padding:7px 9px}.theme-btn-label{font-size:12px;font-weight:600}
   @media (max-width: 860px) {
     #app.ready { grid-template-columns: 0 1fr 0; }
     .sidebar, .members { position:fixed; top:0; bottom:0; z-index:50; width:240px; transition:transform .2s ease; }
@@ -410,7 +416,7 @@
     <ul class="channel-list dm-list" id="dm-list"></ul>
 
     <div class="section-label" style="margin-top:6px;">Games</div>
-    <div class="games-tab"><span>🎮</span> Multiplayer Games <span class="badge-soon">Soon</span></div>
+    <div class="games-tab"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M8 9h8a5 5 0 0 1 4.8 6.4l-.7 2.3a2.5 2.5 0 0 1-4.4.7L14 16H10l-1.7 2.4a2.5 2.5 0 0 1-4.4-.7l-.7-2.3A5 5 0 0 1 8 9Z"/><path d="M8 12v4M6 14h4M16.5 13.5h.01M19 15h.01"/></svg>Multiplayer Games <span class="badge-soon">Soon</span></div>
 
     <div class="sidebar-spacer"></div>
 
@@ -420,8 +426,8 @@
         <div class="uname" id="me-name"></div>
         <div class="urole" id="me-role"></div>
       </div>
-      <button class="icon-btn" id="open-settings" title="Settings">⚙️</button>
-      <button class="icon-btn" id="sign-out" title="Sign out">⎋</button>
+      <button class="icon-btn" id="open-settings" title="Settings" aria-label="Settings"><svg class="ui-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="m19 13 .8.6-1.7 3-1-.4a7.8 7.8 0 0 1-2 1.1l-.1 1.1h-3.5l-.1-1.1a7.8 7.8 0 0 1-2-1.1l-1 .4-1.7-3 .8-.6a7.8 7.8 0 0 1 0-2l-.8-.6 1.7-3 1 .4a7.8 7.8 0 0 1 2-1.1l.1-1.1h3.5l.1 1.1a7.8 7.8 0 0 1 2 1.1l1-.4 1.7 3-.8.6a7.8 7.8 0 0 1 0 2Z"/></svg></button>
+      <button class="icon-btn" id="sign-out" title="Sign out" aria-label="Sign out"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M10 5H5v14h5M14 8l4 4-4 4M18 12H9"/></svg></button>
     </div>
   </aside>
 
@@ -433,15 +439,16 @@
       </div>
       <div class="topbar-spacer"></div>
       <div class="theme-picker">
-        <button class="icon-btn" id="theme-btn" title="Theme">🎨</button>
+        <button class="icon-btn icon-label" id="theme-btn" title="Themes" aria-label="Themes"><svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18h1.2a1.8 1.8 0 0 0 1.1-3.2 1.8 1.8 0 0 1 1.1-3.2H18a3 3 0 0 0 3-3A8.9 8.9 0 0 0 12 3Z"/><circle cx="7.5" cy="10" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="14" cy="7" r="1"/></svg><span class="theme-btn-label">Themes</span></button>
         <div class="theme-menu" id="theme-menu">
           <div class="theme-opt" data-theme="yapp-dark"><span class="dot" style="background:#FF7A33"></span>Yapp Dark</div>
           <div class="theme-opt" data-theme="yapp-light"><span class="dot" style="background:#E8590C"></span>Yapp Light</div>
           <div class="theme-opt" data-theme="midnight"><span class="dot" style="background:#7C8CFF"></span>Midnight</div>
           <div class="theme-opt" data-theme="forest"><span class="dot" style="background:#4FBE7B"></span>Forest</div>
+          <div class="theme-opt" data-theme="rose"><span class="dot" style="background:#FF6F9F"></span>Rose</div><div class="theme-opt" data-theme="ocean"><span class="dot" style="background:#39C6D8"></span>Ocean</div><div class="theme-opt" data-theme="lavender"><span class="dot" style="background:#B18CFF"></span>Lavender</div><div class="theme-opt" data-theme="sunset"><span class="dot" style="background:#FF9A4D"></span>Sunset</div><div class="theme-opt" data-theme="slate"><span class="dot" style="background:#A7B8CC"></span>Slate</div>
         </div>
       </div>
-      <button class="icon-btn" id="mobile-members-toggle" style="display:none;">👥</button>
+      <button class="icon-btn" id="mobile-members-toggle" style="display:none;" aria-label="Members"><svg class="ui-icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M16 5.5a3 3 0 0 1 0 5.8M18 13a5 5 0 0 1 3 4.5"/></svg></button>
     </div>
 
     <div class="messages" id="messages"><div class="empty-state">Loading…</div></div>
@@ -451,10 +458,10 @@
         <img id="img-preview" /><button id="img-preview-clear">Remove</button>
       </div>
       <div class="composer-inner">
-        <button class="icon-btn" id="attach-btn" title="Attach image">📎</button>
+        <button class="icon-btn" id="attach-btn" title="Attach image" aria-label="Attach image"><svg class="ui-icon" viewBox="0 0 24 24"><path d="m20.5 11.5-8.9 8.9a6 6 0 0 1-8.5-8.5l9.1-9.1a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 1 1-2.8-2.8l8.6-8.6"/></svg></button>
         <input type="file" id="file-input" accept="image/*" style="display:none;" />
         <textarea id="msg-input" rows="1" placeholder="Message #general"></textarea>
-        <button class="icon-btn" id="send-btn" title="Send">➤</button>
+        <button class="icon-btn" id="send-btn" title="Send" aria-label="Send"><svg class="ui-icon" viewBox="0 0 24 24"><path d="m4 4 17 8-17 8 3-8-3-8Z"/><path d="M7 12h14"/></svg></button>
       </div>
     </div>
   </main>
@@ -474,8 +481,8 @@
     </div>
     <div class="settings-layout">
       <div class="settings-tabs">
-        <button class="settings-tab-btn active" data-tab="profile" type="button">👤 Profile</button>
-        <button class="settings-tab-btn" data-tab="timetable" type="button">🗓️ Timetable</button>
+        <button class="settings-tab-btn active" data-tab="profile" type="button"><svg class="ui-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Profile</button>
+        <button class="settings-tab-btn" data-tab="timetable" type="button"><svg class="ui-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>Timetable</button>
       </div>
       <div class="settings-content">
 
@@ -509,7 +516,7 @@
 
           <div class="settings-section-title" style="margin-top:18px;">Scan from a screenshot</div>
           <div class="tt-img-drop" id="tt-img-drop" tabindex="0" role="button">
-            📷 Click to upload, drag a file here, or paste (Ctrl/Cmd+V) a screenshot of your timetable
+            <svg class="ui-icon" style="display:inline-block;vertical-align:-3px;margin-right:5px" viewBox="0 0 24 24"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg>Click to upload, drag a file here, or paste (Ctrl/Cmd+V) a screenshot of your timetable
           </div>
           <input type="file" id="tt-img-file" accept="image/*" style="display:none;" />
           <div class="tt-hint">Reads the image using OpenRouter's free tier, with your own free API key — entered once and stored only in this browser — <button type="button" class="link-btn" id="tt-api-key-btn">set API key</button>.</div>
@@ -630,11 +637,14 @@
   </div>
 </div>
 
+<!-- ===== In-app JavaScript dialog ===== -->
+<div class="app-dialog-backdrop" id="app-dialog-backdrop"><div class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title"><h2 id="app-dialog-title">Confirm</h2><p id="app-dialog-message"></p><div class="app-dialog-actions"><button class="btn" id="app-dialog-cancel" type="button">Cancel</button><button class="btn primary" id="app-dialog-confirm" type="button">Confirm</button></div></div></div>
+
 <!-- ===== Right-click context menu (member list) ===== -->
 <div class="context-menu" id="member-context-menu">
-  <button id="ctx-create-dm">💬 Create DM</button>
+  <button id="ctx-create-dm"><svg class="ui-icon" style="display:inline-block;vertical-align:-3px;margin-right:7px" viewBox="0 0 24 24"><path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.8 8.8 0 0 1-4-.9L4 20l1.2-3.2A7.3 7.3 0 0 1 4 12a7.5 7.5 0 0 1 8-7.5 7.5 7.5 0 0 1 8 7Z"/></svg>Create DM</button>
   <hr>
-  <button id="ctx-block" class="danger">🚫 Block</button>
+  <button id="ctx-block" class="danger"><svg class="ui-icon" style="display:inline-block;vertical-align:-3px;margin-right:7px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></svg>Block</button>
 </div>
 
 <div id="lightbox"><img id="lightbox-img" /></div>
@@ -698,6 +708,10 @@ function toast(msg, type="danger") {
     el.addEventListener('animationend', () => el.remove(), { once: true });
   }, 5000);
 }
+let appDialogResolver = null;
+function appConfirm(message, title = 'Confirm', confirmText = 'Confirm', danger = false) { return new Promise(resolve => { appDialogResolver=resolve; $('app-dialog-title').textContent=title; $('app-dialog-message').textContent=message; $('app-dialog-confirm').textContent=confirmText; $('app-dialog-confirm').classList.toggle('danger',danger); $('app-dialog-backdrop').classList.add('open'); $('app-dialog-confirm').focus(); }); }
+function closeAppDialog(result) { $('app-dialog-backdrop').classList.remove('open'); if(appDialogResolver){const r=appDialogResolver;appDialogResolver=null;r(result);} }
+$('app-dialog-confirm').addEventListener('click',()=>closeAppDialog(true)); $('app-dialog-cancel').addEventListener('click',()=>closeAppDialog(false)); $('app-dialog-backdrop').addEventListener('click',e=>{if(e.target.id==='app-dialog-backdrop')closeAppDialog(false)}); document.addEventListener('keydown',e=>{if($('app-dialog-backdrop').classList.contains('open')&&e.key==='Escape')closeAppDialog(false)});
 function hashHue(str) {
   let h = 0;
   for (let i=0;i<str.length;i++) h = str.charCodeAt(i) + ((h<<5)-h);
@@ -805,7 +819,7 @@ async function parseTimetableImage(dataUrl) {
   const dropEl = $('tt-img-drop');
   const originalHtml = dropEl.innerHTML;
   dropEl.classList.add('busy');
-  dropEl.textContent = '⏳ Reading your timetable…';
+  dropEl.textContent = 'Reading your timetable…';
   try {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -1106,7 +1120,7 @@ function listenProfile(uid) {
     if (!snap.exists()) return;
     profile = { uid, ...snap.data() };
     userCache[uid] = profile;
-    $('me-name').innerHTML = escapeHtml(profile.username) + (profile.role === 'admin' ? ' <span class="crown">👑</span>' : '');
+    $('me-name').innerHTML = escapeHtml(profile.username) + (profile.role === 'admin' ? ' <span class="crown"><svg class="ui-icon" style="display:inline-block;vertical-align:-3px;width:13px;height:13px" viewBox="0 0 24 24"><path d="m4 7 4 4 4-7 4 7 4-4-2 12H6L4 7Z"/><path d="M6 21h12"/></svg></span>' : '');
     $('me-role').textContent = profile.role === 'admin' ? 'Admin' : 'Member';
     renderAvatar($('me-avatar'), profile);
     renderAvatar($('settings-avatar'), profile);
@@ -1198,7 +1212,7 @@ function renderConvoHeader() {
       const gear = document.createElement('button');
       gear.className = 'group-gear';
       gear.title = 'Group settings';
-      gear.textContent = '⚙️';
+      gear.innerHTML = '<svg class="ui-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="m19 13 .8.6-1.7 3-1-.4a7.8 7.8 0 0 1-2 1.1l-.1 1.1h-3.5l-.1-1.1a7.8 7.8 0 0 1-2-1.1l-1 .4-1.7-3 .8-.6a7.8 7.8 0 0 1 0-2l-.8-.6 1.7-3 1 .4a7.8 7.8 0 0 1 2-1.1l.1-1.1h3.5l.1 1.1a7.8 7.8 0 0 1 2 1.1l1-.4 1.7 3-.8.6a7.8 7.8 0 0 1 0 2Z"/></svg>';
       gear.addEventListener('click', () => openGroupSettings(d.id));
       header.appendChild(gear);
     }
@@ -1229,7 +1243,7 @@ function renderBlockedGroup(items) {
   const showBtn = document.createElement('button');
   showBtn.textContent = 'Show';
   const label = document.createElement('span');
-  label.textContent = `🚫 ${count} blocked message${count === 1 ? '' : 's'}`;
+  label.textContent = `${count} blocked message${count === 1 ? '' : 's'}`;
   bar.appendChild(label);
   bar.appendChild(showBtn);
   wrapDiv.appendChild(bar);
@@ -1252,7 +1266,7 @@ function listenConvoMessages() {
   unsubMessages = onSnapshot(q, (snap) => {
     const wrap = $('messages');
     if (snap.empty) {
-      wrap.innerHTML = `<div class="empty-state"><div class="bubble-mark"><svg width="40" height="40" viewBox="0 0 64 64" fill="none"><path d="M8 16C8 11.58 11.58 8 16 8H48C52.42 8 56 11.58 56 16V36C56 40.42 52.42 44 48 44H26L14 54V44H16C11.58 44 8 40.42 8 36V16Z" fill="currentColor"/><circle cx="21" cy="26" r="3.4" fill="var(--bg-alt)"/><circle cx="32" cy="26" r="3.4" fill="var(--bg-alt)"/><circle cx="43" cy="26" r="3.4" fill="var(--bg-alt)"/></svg></div>No messages yet — say hi 👋</div>`;
+      wrap.innerHTML = `<div class="empty-state"><div class="bubble-mark"><svg width="40" height="40" viewBox="0 0 64 64" fill="none"><path d="M8 16C8 11.58 11.58 8 16 8H48C52.42 8 56 11.58 56 16V36C56 40.42 52.42 44 48 44H26L14 54V44H16C11.58 44 8 40.42 8 36V16Z" fill="currentColor"/><circle cx="21" cy="26" r="3.4" fill="var(--bg-alt)"/><circle cx="32" cy="26" r="3.4" fill="var(--bg-alt)"/><circle cx="43" cy="26" r="3.4" fill="var(--bg-alt)"/></svg></div>No messages yet — say hi!</div>`;
       return;
     }
     wrap.innerHTML = '';
@@ -1395,7 +1409,7 @@ function renderMessage(id, m, ts, grouped) {
   body.innerHTML = `
     ${!grouped ? `
     <div class="msg-head">
-      <span class="msg-uname clickable ${isAdmin ? 'admin' : ''}">${escapeHtml(m.username)}${isAdmin ? ' 👑' : ''}</span>
+      <span class="msg-uname clickable ${isAdmin ? 'admin' : ''}">${escapeHtml(m.username)}${isAdmin ? ' ♛' : ''}</span>
       <span class="msg-time">${ts.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
       ${canDelete ? `<button class="msg-del" data-id="${id}">Delete</button>` : ''}
     </div>` : ''}
@@ -1424,8 +1438,9 @@ function renderMessage(id, m, ts, grouped) {
 
   return row;
 }
-function deleteMessage(id) {
-  if (!confirm('Delete this message? This can\'t be undone.')) return;
+async function deleteMessage(id) {
+  const confirmed = await appConfirm("Delete this message? This can't be undone.", 'Delete message', 'Delete', true);
+  if (!confirmed) return;
   deleteDoc(convoMessageDoc(id)).catch(() => toast("Couldn't delete that message."));
 }
 $('lightbox').addEventListener('click', () => $('lightbox').classList.remove('open'));
@@ -1493,20 +1508,20 @@ function renderMembers(list) {
     meta.className = 'member-meta';
     const name = document.createElement('div');
     name.className = 'member-name' + (u.role === 'admin' ? ' admin' : '');
-    name.innerHTML = escapeHtml(u.username) + (u.role === 'admin' ? ' 👑' : '');
+    name.innerHTML = escapeHtml(u.username) + (u.role === 'admin' ? ' ♛' : '');
     meta.appendChild(name);
     const cls = computeCurrentClass(u.timetable, new Date());
     if (cls) {
       const clsEl = document.createElement('div');
       clsEl.className = 'member-class active';
-      clsEl.textContent = cls.subject ? `📘 ${cls.subject} · ${cls.period}` : `${cls.period} · free`;
+      clsEl.textContent = cls.subject ? `${cls.subject} · ${cls.period}` : `${cls.period} · free`;
       meta.appendChild(clsEl);
     }
     row.appendChild(meta);
     row.addEventListener('click', () => openProfile(u.uid));
     row.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      openMemberContextMenu(e.clientX, e.clientY, u.uid);
+      openMemberContextMenu(row, u.uid);
     });
     wrap.appendChild(row);
   });
@@ -1516,7 +1531,7 @@ function renderMembers(list) {
 function openProfile(uid) {
   const u = userCache[uid];
   if (!u) return; // not loaded yet (e.g. listenMembers hasn't synced)
-  $('profile-name').innerHTML = escapeHtml(u.username) + (u.role === 'admin' ? ' <span class="crown">👑</span>' : '');
+  $('profile-name').innerHTML = escapeHtml(u.username) + (u.role === 'admin' ? ' <span class="crown">♛</span>' : '');
   $('profile-role').textContent = u.role === 'admin' ? 'Admin' : 'Member';
   $('profile-bio').textContent = u.bio || '';
   renderAvatar($('profile-avatar'), u);
@@ -1524,7 +1539,7 @@ function openProfile(uid) {
   const clsEl = $('profile-class');
   if (cls) {
     clsEl.style.display = '';
-    clsEl.textContent = cls.subject ? `📘 Currently in ${cls.subject} — ${cls.period}` : `${cls.period} right now — no class listed`;
+    clsEl.textContent = cls.subject ? `Currently in ${cls.subject} — ${cls.period}` : `${cls.period} right now — no class listed`;
   } else {
     clsEl.style.display = 'none';
   }
@@ -1560,17 +1575,23 @@ $('profile-backdrop').addEventListener('click', (e) => { if (e.target.id === 'pr
 
 // ---------- member right-click context menu ----------
 let ctxTargetUid = null;
-function openMemberContextMenu(x, y, uid) {
+function openMemberContextMenu(row, uid) {
   ctxTargetUid = uid;
   const isSelf = profile && uid === profile.uid;
   const iBlockedThem = !!(profile && (profile.blocked || []).includes(uid));
   $('ctx-create-dm').style.display = isSelf ? 'none' : '';
   $('ctx-block').style.display = isSelf ? 'none' : '';
-  $('ctx-block').textContent = iBlockedThem ? '✅ Unblock' : '🚫 Block';
+  $('ctx-block').innerHTML = iBlockedThem ? '<svg class="ui-icon" style="display:inline-block;vertical-align:-3px;margin-right:7px" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>Unblock' : '<svg class="ui-icon" style="display:inline-block;vertical-align:-3px;margin-right:7px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></svg>Block';
   const menu = $('member-context-menu');
-  menu.style.left = x + 'px';
-  menu.style.top = y + 'px';
-  menu.classList.add('open');
+  menu.classList.add('open'); menu.style.left='0px'; menu.style.top='0px';
+  requestAnimationFrame(() => {
+    const r=row.getBoundingClientRect(), m=menu.getBoundingClientRect(), gap=6, margin=8;
+    let left=Math.max(margin,Math.min(r.left,window.innerWidth-m.width-margin));
+    let top=r.bottom+gap;
+    if(top+m.height>window.innerHeight-margin) top=r.top-m.height-gap;
+    top=Math.max(margin,Math.min(top,window.innerHeight-m.height-margin));
+    menu.style.left=left+'px'; menu.style.top=top+'px';
+  });
 }
 function closeMemberContextMenu() {
   $('member-context-menu').classList.remove('open');
