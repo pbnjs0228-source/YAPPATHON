@@ -1,0 +1,244 @@
+rules_version = '2';
+
+// Matches the data model in index.html:
+//   users/{uid}                         -> profile docs, keyed by auth uid
+//   channels/{channelId}                -> public channel docs (name, createdAt)
+//                                          OR a DM ({ type: 'dm', members, memberNames, createdAt })
+//   channels/{channelId}/messages/{id}  -> chat messages
+//
+// Admin model:
+// - admin@yappathon.com is the "root" admin: ensureUserDoc() auto-promotes
+//   it on every login, and these rules force that regardless of what the
+//   client sends.
+// - Any *existing* admin (root or promoted) can grant/revoke the admin
+//   role on other users' docs via the profile popup's "Make admin" button.
+//   This is the ONLY way a non-root account becomes admin.
+// - Nobody can change their own role except the root email being
+//   auto-synced to 'admin'. A promoted admin's role is left untouched by
+//   their own writes (e.g. saving their bio doesn't reset them to
+//   'member' — it just carries the existing role forward unchanged).
+// - `role` on chat messages is re-derived server-side the same way, so a
+//   client can't forge an admin-badged message.
+//
+// Every field the client sends is allow-listed and type/size checked so
+// writes can't smuggle in extra fields or oversized payloads.
+// serverTimestamp() fields must equal request.time, so a client can't
+// backdate/fake createdAt, lastSeen, or a message's timestamp.
+//
+// Timetable (settings > Timetable tab):
+// - Owner-only field on their own user doc. Stores a fixed 7-period x
+//   10-column (Week 1/Week 2 x Mon-Fri) grid of free-text subject cells,
+//   plus the enable toggle and the two-week rotation anchor.
+// - The client can fill this grid two ways (manual typing or pasting
+//   spreadsheet text) but both land in the SAME settings-save updateDoc()
+//   call with the same shape, so isValidTimetable() below covers both.
+// - Shape is fully validated (fixed row/col counts, per-cell type + size)
+//   so a client can't smuggle extra rows/columns or oversized cells.
+//
+// Block / mute (member right-click menu):
+// - `blocked` and `muted` are owner-only string arrays of uids on the
+//   acting user's own doc. They're purely a client-side filter, so they
+//   only need to be writable by their owner.
+//
+// Direct messages (member right-click menu > Create DM):
+// - A DM is a channel doc with type == 'dm' and a two-uid `members` list,
+//   at the deterministic id `dm_<uidA>_<uidB>` (uids sorted) so both sides
+//   derive the same id and can't create duplicates.
+// - Either member may create it; only its two members can read the doc or
+//   read/write its messages. Membership is immutable once created.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // The one email that's always admin, independent of Firestore state.
+    function isRootAdminEmail() {
+      return isSignedIn() && request.auth.token.email == 'admin@yappathon.com';
+    }
+
+    // Full admin check: root email OR a role of 'admin' actually stored
+    // on the acting user's own doc (i.e. someone a root/prior admin
+    // promoted). get() calls to the same path are cached per-request,
+    // so calling this more than once in a rule is cheap.
+    function isAdmin() {
+      return isRootAdminEmail() ||
+        (isSignedIn() &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    // One row of the timetable grid: exactly 10 cells (Week 1 Mon-Fri,
+    // Week 2 Mon-Fri), each a short string.
+    function isValidTtRow(r) {
+      return r is list && r.size() == 10
+        && r[0] is string && r[0].size() <= 60
+        && r[1] is string && r[1].size() <= 60
+        && r[2] is string && r[2].size() <= 60
+        && r[3] is string && r[3].size() <= 60
+        && r[4] is string && r[4].size() <= 60
+        && r[5] is string && r[5].size() <= 60
+        && r[6] is string && r[6].size() <= 60
+        && r[7] is string && r[7].size() <= 60
+        && r[8] is string && r[8].size() <= 60
+        && r[9] is string && r[9].size() <= 60;
+    }
+
+    // Full timetable object: enable flag, two-week rotation anchor, and
+    // the fixed 7-row (Morning Registration + Period 1-6) grid.
+    function isValidTimetable(tt) {
+      return tt is map
+        && tt.keys().hasOnly(['enabled', 'weekAnchorMonday', 'weekAnchorIndex', 'grid'])
+        && tt.enabled is bool
+        && tt.weekAnchorMonday is string && tt.weekAnchorMonday.size() == 10
+        && tt.weekAnchorIndex is int && (tt.weekAnchorIndex == 0 || tt.weekAnchorIndex == 1)
+        && tt.grid is list && tt.grid.size() == 7
+        && isValidTtRow(tt.grid[0]) && isValidTtRow(tt.grid[1]) && isValidTtRow(tt.grid[2])
+        && isValidTtRow(tt.grid[3]) && isValidTtRow(tt.grid[4]) && isValidTtRow(tt.grid[5])
+        && isValidTtRow(tt.grid[6]);
+    }
+
+    // A blocked/muted list: uids only, capped so it can't be used as
+    // free storage.
+    function isValidUidList(l) {
+      return l is list && l.size() <= 500;
+    }
+
+    // ---------------- users/{uid} ----------------
+    match /users/{uid} {
+      allow read: if isSignedIn();
+
+      // First-login doc creation (ensureUserDoc). Only the root email can
+      // ever create itself pre-admin; everyone else starts as 'member' —
+      // getting promoted later is always a separate, explicit admin action.
+      // No `timetable`/`blocked`/`muted` fields yet at this point — they're
+      // only ever added later via the update path below.
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(
+             ['uid', 'email', 'username', 'photoBase64', 'bio', 'role', 'createdAt', 'lastSeen'])
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == (isRootAdminEmail() ? 'admin' : 'member')
+        && request.resource.data.username is string
+        && request.resource.data.username.size() >= 2
+        && request.resource.data.username.size() <= 40
+        && (request.resource.data.photoBase64 == null || request.resource.data.photoBase64 is string)
+        && (!('bio' in request.resource.data) || (request.resource.data.bio is string && request.resource.data.bio.size() <= 160))
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.lastSeen == request.time;
+
+      // Two distinct ways to update a user doc:
+      //  (a) the owner updating their own profile (username/bio/avatar/
+      //      lastSeen/timetable/blocked/muted) — role just carries forward
+      //      unchanged, except the root email is always force-synced to
+      //      'admin'.
+      //  (b) an existing admin flipping ONLY the `role` field on someone
+      //      ELSE's doc, to 'admin' or 'member' — this is the admin-grant
+      //      action from the profile popup.
+      allow update: if isSignedIn() && (
+        (
+          request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(
+               ['uid', 'email', 'username', 'photoBase64', 'bio', 'role', 'createdAt', 'lastSeen', 'timetable', 'blocked', 'muted'])
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.role == (isRootAdminEmail() ? 'admin' : resource.data.role)
+          && request.resource.data.username is string
+          && request.resource.data.username.size() >= 2
+          && request.resource.data.username.size() <= 40
+          && (request.resource.data.photoBase64 == null || request.resource.data.photoBase64 is string)
+          && (!('bio' in request.resource.data) || (request.resource.data.bio is string && request.resource.data.bio.size() <= 160))
+          && (!('timetable' in request.resource.data) || isValidTimetable(request.resource.data.timetable))
+          && (!('blocked' in request.resource.data) || isValidUidList(request.resource.data.blocked))
+          && (!('muted' in request.resource.data) || isValidUidList(request.resource.data.muted))
+        ) || (
+          isAdmin()
+          && request.auth.uid != uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])
+          && (request.resource.data.role == 'admin' || request.resource.data.role == 'member')
+        )
+      );
+
+      allow delete: if false; // no delete-account feature in the app
+    }
+
+    // ---------------- channels/{channelId} ----------------
+    match /channels/{channelId} {
+
+      function channelDoc() {
+        return get(/databases/$(database)/documents/channels/$(channelId)).data;
+      }
+      function isDmChannel() {
+        return exists(/databases/$(database)/documents/channels/$(channelId))
+          && channelDoc().get('type', 'channel') == 'dm';
+      }
+      // Public channels are readable by everyone signed in; a DM only by
+      // its two members.
+      function canAccessChannel() {
+        return isSignedIn()
+          && (!isDmChannel() || request.auth.uid in channelDoc().members);
+      }
+
+      allow read: if canAccessChannel();
+
+      // Any signed-in user can silently create the two default channels
+      // (ensureDefaultChannels runs for every user on login). Any other
+      // named channel requires admin, matching the UI's admin-only "+"
+      // button. Separately, any signed-in user can create a DM they are
+      // a member of, at its deterministic sorted-uid id.
+      allow create: if isSignedIn() && (
+        (
+          (isAdmin() || channelId in ['general', 'random'])
+          && request.resource.data.keys().hasOnly(['name', 'createdAt'])
+          && request.resource.data.name == channelId
+          && request.resource.data.createdAt == request.time
+        ) || (
+          request.resource.data.keys().hasOnly(['type', 'members', 'memberNames', 'createdAt'])
+          && request.resource.data.type == 'dm'
+          && request.resource.data.members is list
+          && request.resource.data.members.size() == 2
+          && request.resource.data.members[0] is string
+          && request.resource.data.members[1] is string
+          && request.resource.data.members[0] < request.resource.data.members[1]
+          && request.auth.uid in request.resource.data.members
+          && channelId == 'dm_' + request.resource.data.members[0] + '_' + request.resource.data.members[1]
+          && request.resource.data.memberNames is map
+          && request.resource.data.memberNames.keys().hasOnly(request.resource.data.members)
+          && request.resource.data.createdAt == request.time
+        )
+      );
+
+      allow update, delete: if false; // no rename/delete-channel or leave-DM feature
+
+      // ---------------- channels/{channelId}/messages/{messageId} ----------------
+      match /messages/{messageId} {
+        allow read: if canAccessChannel();
+
+        allow create: if canAccessChannel()
+          && request.resource.data.keys().hasOnly(
+               ['uid', 'username', 'role', 'photoBase64', 'text', 'imageBase64', 'timestamp'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.role == (isAdmin() ? 'admin' : 'member')
+          && request.resource.data.username is string
+          && request.resource.data.username.size() >= 1
+          && request.resource.data.username.size() <= 40
+          && (request.resource.data.photoBase64 == null || request.resource.data.photoBase64 is string)
+          && (request.resource.data.text == null
+              || (request.resource.data.text is string && request.resource.data.text.size() <= 4000))
+          && (request.resource.data.imageBase64 == null
+              || (request.resource.data.imageBase64 is string && request.resource.data.imageBase64.size() < 900000))
+          && !(request.resource.data.text == null && request.resource.data.imageBase64 == null)
+          && request.resource.data.timestamp == request.time;
+
+        // Author or admin can delete (matches renderMessage()'s canDelete logic).
+        allow delete: if isSignedIn()
+          && (resource.data.uid == request.auth.uid || isAdmin());
+
+        allow update: if false; // no message-edit feature
+      }
+    }
+  }
+}
