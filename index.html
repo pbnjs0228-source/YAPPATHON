@@ -478,7 +478,7 @@
             📷 Click to upload, drag a file here, or paste (Ctrl/Cmd+V) a screenshot of your timetable
           </div>
           <input type="file" id="tt-img-file" accept="image/*" style="display:none;" />
-          <div class="tt-hint">Reads the image with Claude using your own Anthropic API key, entered once and stored only in this browser — <button type="button" class="link-btn" id="tt-api-key-btn">set API key</button>.</div>
+          <div class="tt-hint">Reads the image using OpenRouter's free tier, with your own free API key — entered once and stored only in this browser — <button type="button" class="link-btn" id="tt-api-key-btn">set API key</button>.</div>
 
           <div class="tt-divider"><span>or</span></div>
 
@@ -504,16 +504,16 @@
   </div>
 </div>
 
-<!-- ===== Anthropic API key modal (for timetable image scan) ===== -->
+<!-- ===== OpenRouter API key modal (for timetable image scan) ===== -->
 <div class="modal-backdrop" id="apikey-backdrop">
   <div class="modal" style="max-width:420px;">
-    <h2>Anthropic API key</h2>
+    <h2>OpenRouter API key</h2>
     <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0 0 4px;">
-      Used only in this browser to let Claude read your timetable screenshot. It's stored in this browser's local storage and sent directly to Anthropic's API when you scan an image — never anywhere else. Because it's used straight from the browser, anyone with access to dev tools on this device could see it, so only do this on a device you trust. Get a key at
-      <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.
+      Used only in this browser to let a free vision model read your timetable screenshot. It's stored in this browser's local storage and sent directly to OpenRouter's API when you scan an image — never anywhere else. Because it's used straight from the browser, anyone with access to dev tools on this device could see it, so only do this on a device you trust. Get a free key (no credit card needed) at
+      <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.
     </p>
     <label for="apikey-input">API key</label>
-    <input type="password" id="apikey-input" placeholder="sk-ant-…" autocomplete="off" />
+    <input type="password" id="apikey-input" placeholder="sk-or-v1-…" autocomplete="off" />
     <div class="modal-err" id="apikey-err"></div>
     <div class="modal-actions" style="justify-content:space-between;">
       <button class="btn danger-ghost" id="apikey-clear" type="button">Clear saved key</button>
@@ -701,7 +701,11 @@ function currentWeekIndexFor(timetable, now) {
   const weeksDiff = Math.round((thisMonday - anchorMonday) / (7 * 86400000));
   return (((timetable.weekAnchorIndex || 0) + weeksDiff) % 2 + 2) % 2;
 }
-const TT_KEY_STORAGE = 'yapp-anthropic-key';
+const TT_KEY_STORAGE = 'yapp-openrouter-key';
+// OpenRouter's free-model roster changes over time — if this stops
+// working, check openrouter.ai/models for a current free ":free" model
+// with image input and swap it in here.
+const TT_SCAN_MODEL = 'google/gemma-4-31b-it:free';
 function buildTimetablePrompt() {
   const rows = PERIODS.map(p => `- "${p.label}" (${formatTimeRange(p.start, p.end)})`).join('\n');
   return `This image is a school timetable. Convert it into a fixed grid.
@@ -718,31 +722,28 @@ Respond with ONLY raw JSON in exactly this shape, no markdown code fences, no ex
 }
 async function parseTimetableImage(dataUrl) {
   const apiKey = localStorage.getItem(TT_KEY_STORAGE);
-  if (!apiKey) { toast('Add your Anthropic API key first.', 'info'); openApiKeyModal(); return; }
+  if (!apiKey) { toast('Add your free OpenRouter API key first.', 'info'); openApiKeyModal(); return; }
   const dropEl = $('tt-img-drop');
   const originalHtml = dropEl.innerHTML;
   dropEl.classList.add('busy');
   dropEl.textContent = '⏳ Reading your timetable…';
   try {
-    const commaIdx = dataUrl.indexOf(',');
-    const base64 = dataUrl.slice(commaIdx + 1);
-    const mediaType = dataUrl.slice(5, dataUrl.indexOf(';'));
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
+        'authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': location.origin || 'https://yappathon.chat',
+        'X-Title': 'Yappathon'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-5',
+        model: TT_SCAN_MODEL,
         max_tokens: 2000,
         messages: [{
           role: 'user',
           content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-            { type: 'text', text: buildTimetablePrompt() }
+            { type: 'text', text: buildTimetablePrompt() },
+            { type: 'image_url', image_url: { url: dataUrl } }
           ]
         }]
       })
@@ -752,9 +753,9 @@ async function parseTimetableImage(dataUrl) {
       throw new Error((errBody && errBody.error && errBody.error.message) || `Request failed (${res.status}).`);
     }
     const data = await res.json();
-    const textBlock = (data.content || []).find(b => b.type === 'text');
-    if (!textBlock) throw new Error("Didn't get a readable response back.");
-    const cleaned = textBlock.text.replace(/```json|```/g, '').trim();
+    const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    if (!text) throw new Error("Didn't get a readable response back.");
+    const cleaned = String(text).replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(cleaned);
     if (!parsed || !Array.isArray(parsed.grid)) throw new Error('Unexpected response format.');
     ttGrid = PERIODS.map((_, ri) => {
