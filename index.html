@@ -231,13 +231,17 @@
   .status-dot { width:10px; height:10px; border-radius:50%; position:absolute; bottom:-1px; right:-1px; border:2px solid var(--bg-alt); }
   .status-dot.online { background: var(--online); animation: pulseRing 2s ease-out infinite; }
   .status-dot.offline { background: var(--text-muted); }
+  .member-meta { min-width:0; flex:1; }
   .member-name { font-size:13px; font-weight:600; display:flex; align-items:center; gap:4px; }
   .member-name.admin { color: var(--accent); }
+  .member-class { font-size:10.5px; color: var(--text-muted); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .member-class.active { color: var(--accent); font-weight:600; }
 
   .profile-header { display:flex; align-items:center; gap:14px; }
   .profile-name-wrap { min-width:0; }
   .profile-name { font-size:17px; font-weight:700; display:flex; align-items:center; gap:6px; }
   .profile-role { font-size:12px; color: var(--text-muted); margin-top:2px; }
+  .profile-class { font-size:12px; color: var(--accent); font-weight:600; margin-top:5px; display:none; }
   .profile-bio { font-size:13.5px; line-height:1.5; color: var(--text); margin: 18px 0 0; white-space:pre-wrap; word-break:break-word; }
   .profile-bio:empty::before { content: 'No bio yet.'; color: var(--text-muted); font-style:italic; }
   .profile-actions { justify-content:space-between; }
@@ -265,6 +269,38 @@
   .btn.primary:hover { background: var(--accent-hover); box-shadow: 0 6px 16px var(--accent-soft); }
   .btn.danger-ghost { color: var(--danger); border-color: transparent; }
   .modal-err { font-size:12px; color:var(--danger); margin-top:10px; display:none; }
+
+  /* ---------- Settings modal (tabbed) ---------- */
+  .modal.settings-modal { max-width:680px; padding:0; overflow:hidden; }
+  .settings-head { display:flex; align-items:center; justify-content:space-between; padding:20px 24px 14px; border-bottom:1px solid var(--border); }
+  .settings-head h2 { margin:0; }
+  .settings-layout { display:flex; min-height:400px; max-height:66vh; }
+  .settings-tabs { width:170px; flex-shrink:0; background: var(--bg-alt); border-right:1px solid var(--border); padding:14px 8px; display:flex; flex-direction:column; gap:2px; }
+  .settings-tab-btn { display:flex; align-items:center; gap:9px; padding:10px 12px; border-radius:8px; background:none; border:none; color:var(--text-muted); font-size:13px; font-weight:600; text-align:left; transition: background .15s ease, color .15s ease; }
+  .settings-tab-btn:hover { background: var(--bg-elevated); color: var(--text); }
+  .settings-tab-btn.active { background: var(--accent-soft); color: var(--text); }
+  .settings-content { flex:1; min-width:0; padding:22px 26px; overflow-y:auto; }
+  .settings-pane { display:none; animation: fadeSlideUp .22s cubic-bezier(.22,1,.36,1) both; }
+  .settings-pane.active { display:block; }
+  .settings-modal .modal-actions { padding:14px 24px 22px; margin-top:0; border-top:1px solid var(--border); }
+  .settings-modal .modal-err { margin:0 24px; }
+  .settings-section-title { font-size:11px; text-transform:uppercase; letter-spacing:.07em; color: var(--text-muted); margin: 0 0 4px; }
+
+  .tt-toggle-row { display:flex; align-items:flex-start; gap:10px; background: var(--bg-input); border:1px solid var(--border); border-radius:10px; padding:11px 13px; margin-top:10px; font-size:12.5px; color: var(--text-muted); line-height:1.5; }
+  .tt-toggle-row input { margin-top:2px; flex-shrink:0; accent-color: var(--accent); width:16px; height:16px; }
+  .tt-hint { font-size:11px; color: var(--text-muted); margin-top:6px; line-height:1.5; }
+  .tt-grid-wrap { overflow-x:auto; margin-top:14px; border:1px solid var(--border); border-radius:10px; }
+  .tt-grid { border-collapse:collapse; width:100%; font-size:11.5px; }
+  .tt-grid th, .tt-grid td { border:1px solid var(--border); padding:0; }
+  .tt-grid th { background: var(--bg-input); color: var(--text-muted); font-weight:600; padding:6px 8px; white-space:nowrap; font-size:10px; text-transform:uppercase; letter-spacing:.03em; }
+  .tt-grid th.tt-period-head { text-align:left; text-transform:none; letter-spacing:0; font-size:11.5px; color: var(--text); }
+  .tt-grid td.tt-period-label { background: var(--bg-input); padding:6px 8px; white-space:nowrap; font-weight:600; font-size:11.5px; }
+  .tt-period-time { color: var(--text-muted); font-weight:400; font-size:9.5px; display:block; margin-top:1px; }
+  .tt-grid input { width:100%; min-width:76px; border:none; background:none; color:var(--text); padding:7px 6px; font-size:11.5px; font-family:inherit; }
+  .tt-grid input:focus { outline:2px solid var(--accent); outline-offset:-2px; background: var(--accent-soft); }
+  .tt-grid input::placeholder { color: var(--text-muted); opacity:.5; }
+  .tt-week-sep { border-left:2px solid var(--accent) !important; }
+  .tt-paste-row { display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap; }
 
   #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); align-items:center; justify-content:center; z-index:200; cursor:zoom-out; animation: fadeIn .2s ease both; }
   #lightbox.open { display:flex; }
@@ -391,18 +427,60 @@
 
 <!-- ===== Settings modal ===== -->
 <div class="modal-backdrop" id="settings-backdrop">
-  <div class="modal">
-    <h2>Your profile</h2>
-    <div class="modal-avatar-row">
-      <img class="avatar" id="settings-avatar" style="width:60px;height:60px;" />
-      <button class="upload-btn" id="settings-upload-btn">Change avatar</button>
-      <input type="file" id="settings-file-input" accept="image/*" style="display:none;" />
+  <div class="modal settings-modal">
+    <div class="settings-head">
+      <h2 style="margin:0;">Settings</h2>
+      <button class="icon-btn" id="settings-close-x" title="Close">✕</button>
     </div>
-    <label for="settings-username">Username</label>
-    <input type="text" id="settings-username" maxlength="24" />
-    <label for="settings-bio">Bio</label>
-    <textarea id="settings-bio" maxlength="160" rows="3" placeholder="Say something about yourself…"></textarea>
-    <div class="char-count" id="settings-bio-count">0/160</div>
+    <div class="settings-layout">
+      <div class="settings-tabs">
+        <button class="settings-tab-btn active" data-tab="profile" type="button">👤 Profile</button>
+        <button class="settings-tab-btn" data-tab="timetable" type="button">🗓️ Timetable</button>
+      </div>
+      <div class="settings-content">
+
+        <div class="settings-pane active" id="pane-profile">
+          <div class="settings-section-title">Avatar</div>
+          <div class="modal-avatar-row" style="margin-top:6px;">
+            <img class="avatar" id="settings-avatar" style="width:60px;height:60px;" />
+            <button class="upload-btn" id="settings-upload-btn">Change avatar</button>
+            <input type="file" id="settings-file-input" accept="image/*" style="display:none;" />
+          </div>
+          <label for="settings-username">Username</label>
+          <input type="text" id="settings-username" maxlength="24" />
+          <label for="settings-bio">Bio</label>
+          <textarea id="settings-bio" maxlength="160" rows="3" placeholder="Say something about yourself…"></textarea>
+          <div class="char-count" id="settings-bio-count">0/160</div>
+        </div>
+
+        <div class="settings-pane" id="pane-timetable">
+          <div class="settings-section-title">Class status</div>
+          <div class="tt-toggle-row">
+            <input type="checkbox" id="tt-enabled" />
+            <span>Show my current period &amp; subject to other members, based on the timetable below.</span>
+          </div>
+
+          <label for="tt-week-select">Which week is it right now?</label>
+          <select id="tt-week-select" style="width:100%; background: var(--bg-input); border:1px solid var(--border); color:var(--text); padding:10px 12px; border-radius:8px; font-size:14px; font-family:inherit;">
+            <option value="0">Week 1</option>
+            <option value="1">Week 2</option>
+          </select>
+          <div class="tt-hint">This anchors your two-week rotation — set it correctly once and future weeks alternate automatically.</div>
+
+          <label for="tt-paste">Paste your timetable</label>
+          <textarea id="tt-paste" rows="4" placeholder="Paste 7 tab-separated rows, one per period, in order: Morning Registration, Period 1–6. Each row needs 10 columns: Week 1 Mon–Fri, then Week 2 Mon–Fri. (Copy straight from a spreadsheet version of your timetable.)"></textarea>
+          <div class="tt-paste-row">
+            <button class="btn" id="tt-parse-btn" type="button">Fill grid from paste</button>
+            <button class="btn" id="tt-clear-btn" type="button">Clear grid</button>
+          </div>
+
+          <div class="tt-grid-wrap">
+            <table class="tt-grid" id="tt-grid-table"></table>
+          </div>
+        </div>
+
+      </div>
+    </div>
     <div class="modal-err" id="settings-err"></div>
     <div class="modal-actions">
       <button class="btn" id="settings-cancel">Cancel</button>
@@ -419,6 +497,7 @@
       <div class="profile-name-wrap">
         <div class="profile-name" id="profile-name"></div>
         <div class="profile-role" id="profile-role"></div>
+        <div class="profile-class" id="profile-class"></div>
       </div>
     </div>
     <p class="profile-bio" id="profile-bio"></p>
@@ -543,6 +622,70 @@ function resizeImage(file, maxDim, quality) {
     };
     reader.readAsDataURL(file);
   });
+}
+
+// ---------- timetable ----------
+const PERIODS = [
+  { label: 'Morning Registration', start: '08:40', end: '08:47' },
+  { label: 'Period 1', start: '08:50', end: '09:45' },
+  { label: 'Period 2', start: '09:50', end: '10:40' },
+  { label: 'Period 3', start: '11:05', end: '12:00' },
+  { label: 'Period 4', start: '12:05', end: '12:55' },
+  { label: 'Period 5', start: '13:45', end: '14:40' },
+  { label: 'Period 6', start: '14:45', end: '15:35' },
+];
+const TT_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+
+function emptyTtGrid() { return PERIODS.map(() => new Array(10).fill('')); }
+function formatTimeRange(s, e) {
+  const fmt = (t) => {
+    let [h, m] = t.split(':').map(Number);
+    const ap = h >= 12 ? 'pm' : 'am';
+    h = h % 12; if (h === 0) h = 12;
+    return `${h}:${String(m).padStart(2, '0')}${ap}`;
+  };
+  return `${fmt(s)}–${fmt(e)}`;
+}
+function getMondayDate(d) {
+  const dt = new Date(d);
+  const day = dt.getDay(); // 0 Sun .. 6 Sat
+  const diff = day === 0 ? -6 : 1 - day;
+  dt.setHours(0, 0, 0, 0);
+  dt.setDate(dt.getDate() + diff);
+  return dt;
+}
+function isoDateStr(d) {
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function currentWeekIndexFor(timetable, now) {
+  if (!timetable || !timetable.weekAnchorMonday) return 0;
+  const thisMonday = getMondayDate(now);
+  const anchorMonday = new Date(timetable.weekAnchorMonday + 'T00:00:00');
+  const weeksDiff = Math.round((thisMonday - anchorMonday) / (7 * 86400000));
+  return (((timetable.weekAnchorIndex || 0) + weeksDiff) % 2 + 2) % 2;
+}
+function computeCurrentClass(timetable, now) {
+  now = now || new Date();
+  if (!timetable || !timetable.enabled || !timetable.grid) return null;
+  const day = now.getDay();
+  if (day === 0 || day === 6) return null; // weekend
+  const dayIndex = day - 1;
+  const weekIndex = currentWeekIndexFor(timetable, now);
+  const col = weekIndex * 5 + dayIndex;
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  for (let i = 0; i < PERIODS.length; i++) {
+    const p = PERIODS[i];
+    const [sh, sm] = p.start.split(':').map(Number);
+    const [eh, em] = p.end.split(':').map(Number);
+    const s = sh * 60 + sm, e = eh * 60 + em;
+    if (nowMins >= s && nowMins < e) {
+      const row = timetable.grid[i] || [];
+      const subject = (row[col] || '').trim();
+      return { period: p.label, subject: subject || null };
+    }
+  }
+  return null;
 }
 
 // ---------- state ----------
@@ -870,7 +1013,7 @@ function renderMessage(id, m, ts, grouped) {
   const unameEl = body.querySelector('.msg-uname');
   if (unameEl) unameEl.addEventListener('click', () => openProfile(m.uid));
   const delBtn = body.querySelector('.msg-del');
-  if (delBtn) delBtn.addEventListener('click', () => deleteDoc(doc(db, 'channels', currentChannel, 'messages', id)).catch(()=>toast("Couldn't delete that message.")));
+  if (delBtn) delBtn.addEventListener('click', () => deleteMessage(id));
   const imgEl = body.querySelector('.msg-img');
   if (imgEl) imgEl.addEventListener('click', () => { $('lightbox-img').src = imgEl.src; $('lightbox').classList.add('open'); });
 
@@ -882,11 +1025,15 @@ function renderMessage(id, m, ts, grouped) {
     const groupedDel = document.createElement('button');
     groupedDel.className = 'msg-del grouped-del';
     groupedDel.textContent = 'Delete';
-    groupedDel.addEventListener('click', () => deleteDoc(doc(db, 'channels', currentChannel, 'messages', id)).catch(()=>toast("Couldn't delete that message.")));
+    groupedDel.addEventListener('click', () => deleteMessage(id));
     row.appendChild(groupedDel);
   }
 
   return row;
+}
+function deleteMessage(id) {
+  if (!confirm('Delete this message? This can\'t be undone.')) return;
+  deleteDoc(doc(db, 'channels', currentChannel, 'messages', id)).catch(() => toast("Couldn't delete that message."));
 }
 $('lightbox').addEventListener('click', () => $('lightbox').classList.remove('open'));
 
@@ -949,10 +1096,20 @@ function renderMembers(list) {
     dot.className = 'status-dot ' + (online ? 'online' : 'offline');
     av.appendChild(dot);
     row.appendChild(av);
+    const meta = document.createElement('div');
+    meta.className = 'member-meta';
     const name = document.createElement('div');
     name.className = 'member-name' + (u.role === 'admin' ? ' admin' : '');
     name.innerHTML = escapeHtml(u.username) + (u.role === 'admin' ? ' 👑' : '');
-    row.appendChild(name);
+    meta.appendChild(name);
+    const cls = computeCurrentClass(u.timetable, new Date());
+    if (cls) {
+      const clsEl = document.createElement('div');
+      clsEl.className = 'member-class active';
+      clsEl.textContent = cls.subject ? `📘 ${cls.subject} · ${cls.period}` : `${cls.period} · free`;
+      meta.appendChild(clsEl);
+    }
+    row.appendChild(meta);
     row.addEventListener('click', () => openProfile(u.uid));
     wrap.appendChild(row);
   });
@@ -966,6 +1123,14 @@ function openProfile(uid) {
   $('profile-role').textContent = u.role === 'admin' ? 'Admin' : 'Member';
   $('profile-bio').textContent = u.bio || '';
   renderAvatar($('profile-avatar'), u);
+  const cls = computeCurrentClass(u.timetable, new Date());
+  const clsEl = $('profile-class');
+  if (cls) {
+    clsEl.style.display = '';
+    clsEl.textContent = cls.subject ? `📘 Currently in ${cls.subject} — ${cls.period}` : `${cls.period} right now — no class listed`;
+  } else {
+    clsEl.style.display = 'none';
+  }
 
   const toggleBtn = $('profile-admin-toggle');
   const canManage = profile && profile.role === 'admin' && u.uid !== profile.uid;
@@ -1049,13 +1214,87 @@ async function sendMessage() {
 }
 
 // ---------- settings modal ----------
+document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.settings-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $('pane-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+let ttGrid = emptyTtGrid();
+function renderTtGridTable() {
+  const table = $('tt-grid-table');
+  table.innerHTML = '';
+  const thead = document.createElement('thead');
+  const headRow1 = document.createElement('tr');
+  headRow1.innerHTML = `<th class="tt-period-head">Period</th><th colspan="5">Week 1</th><th colspan="5" class="tt-week-sep">Week 2</th>`;
+  const headRow2 = document.createElement('tr');
+  let headCells = '<th></th>';
+  TT_DAYS.concat(TT_DAYS).forEach((d, i) => { headCells += `<th class="${i === 5 ? 'tt-week-sep' : ''}">${d}</th>`; });
+  headRow2.innerHTML = headCells;
+  thead.appendChild(headRow1); thead.appendChild(headRow2);
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  PERIODS.forEach((p, ri) => {
+    const tr = document.createElement('tr');
+    const labelTd = document.createElement('td');
+    labelTd.className = 'tt-period-label';
+    labelTd.innerHTML = `${escapeHtml(p.label)}<span class="tt-period-time">${formatTimeRange(p.start, p.end)}</span>`;
+    tr.appendChild(labelTd);
+    for (let ci = 0; ci < 10; ci++) {
+      const td = document.createElement('td');
+      if (ci === 5) td.classList.add('tt-week-sep');
+      const input = document.createElement('input');
+      input.type = 'text'; input.maxLength = 40;
+      input.value = (ttGrid[ri] && ttGrid[ri][ci]) || '';
+      input.placeholder = '—';
+      input.addEventListener('input', () => { ttGrid[ri][ci] = input.value; });
+      td.appendChild(input);
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+}
+$('tt-parse-btn').addEventListener('click', () => {
+  const raw = $('tt-paste').value;
+  if (!raw.trim()) { toast('Paste your timetable text into the box first.', 'info'); return; }
+  let lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length > PERIODS.length) lines = lines.slice(lines.length - PERIODS.length);
+  lines.forEach((line, ri) => {
+    if (ri >= PERIODS.length) return;
+    const cells = line.split('\t').length > 1 ? line.split('\t') : line.split(/\s{2,}|,/);
+    for (let ci = 0; ci < 10; ci++) ttGrid[ri][ci] = (cells[ci] || '').trim();
+  });
+  renderTtGridTable();
+  toast('Grid filled in — review the cells below, then save.', 'info');
+});
+$('tt-clear-btn').addEventListener('click', () => {
+  ttGrid = emptyTtGrid();
+  renderTtGridTable();
+});
+
 $('open-settings').addEventListener('click', () => {
   $('settings-username').value = profile.username;
   $('settings-bio').value = profile.bio || '';
   $('settings-bio-count').textContent = `${($('settings-bio').value || '').length}/160`;
   $('settings-err').style.display = 'none';
+  document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'profile'));
+  document.querySelectorAll('.settings-pane').forEach(p => p.classList.toggle('active', p.id === 'pane-profile'));
+  const tt = profile.timetable;
+  ttGrid = (tt && Array.isArray(tt.grid)) ? PERIODS.map((_, ri) => {
+    const row = tt.grid[ri] || [];
+    return new Array(10).fill('').map((v, ci) => row[ci] || '');
+  }) : emptyTtGrid();
+  $('tt-enabled').checked = !!(tt && tt.enabled);
+  $('tt-paste').value = '';
+  $('tt-week-select').value = String(tt ? currentWeekIndexFor(tt, new Date()) : 0);
+  renderTtGridTable();
   $('settings-backdrop').classList.add('open');
 });
+$('settings-close-x').addEventListener('click', () => $('settings-backdrop').classList.remove('open'));
 $('settings-bio').addEventListener('input', () => {
   $('settings-bio-count').textContent = `${$('settings-bio').value.length}/160`;
 });
@@ -1080,10 +1319,17 @@ $('settings-save').addEventListener('click', async () => {
   if (bio.length > 160) { err.textContent = 'Bio needs to be 160 characters or fewer.'; err.style.display = 'block'; return; }
   const updates = { username: name, bio };
   if (stagedAvatar) updates.photoBase64 = stagedAvatar;
+  updates.timetable = {
+    enabled: $('tt-enabled').checked,
+    weekAnchorMonday: isoDateStr(getMondayDate(new Date())),
+    weekAnchorIndex: parseInt($('tt-week-select').value, 10) || 0,
+    grid: ttGrid
+  };
   try {
     await updateDoc(doc(db, 'users', currentUser.uid), updates);
     stagedAvatar = null;
     $('settings-backdrop').classList.remove('open');
+    toast('Settings saved.', 'info');
   } catch (e) {
     err.textContent = "Couldn't save changes."; err.style.display = 'block';
   }
