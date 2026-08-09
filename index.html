@@ -2408,6 +2408,14 @@ $('settings-save').addEventListener('click', async () => {
     if (updates.photoBase64 && updates.photoBase64.length > 700000) {
       throw new Error('The compressed avatar is still too large. Please choose another image.');
     }
+    console.log('DEBUG uid:', currentUser.uid);
+    console.log('DEBUG update keys:', Object.keys(updates));
+    console.log('DEBUG update payload:', JSON.stringify({
+      username: updates.username,
+      bio: updates.bio,
+      photoBase64_length: updates.photoBase64 ? updates.photoBase64.length : null,
+      timetable: updates.timetable
+    }, null, 2));
     await updateDoc(doc(db, 'users', currentUser.uid), updates);
     stagedAvatar = null;
     $('avatar-upload-status').classList.remove('error');
