@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Yappathon — Chat v21</title>
+<title>Yappathon — Chat v0.7</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23FF7A33'/%3E%3Cpath d='M14 20C14 16.13 17.13 13 21 13H43C46.87 13 50 16.13 50 20V34C50 37.87 46.87 41 43 41H26L18 48V41H21C17.13 41 14 37.87 14 34V20Z' fill='white'/%3E%3Ccircle cx='23' cy='27' r='3' fill='%23FF7A33'/%3E%3Ccircle cx='32' cy='27' r='3' fill='%23FF7A33'/%3E%3Ccircle cx='41' cy='27' r='3' fill='%23FF7A33'/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -421,6 +421,36 @@
   .changelog-actions { display:flex; justify-content:flex-end; margin-top:20px; }
   @media (prefers-reduced-motion: reduce) { .nova-flash.active { animation:none; opacity:0; } .changelog-backdrop.open,.changelog-card { animation:none; } }
 
+  /* ---------- Secrets / achievements ---------- */
+  .secrets-list { display:grid; gap:10px; margin-top:12px; }
+  .secret-card { display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--border); border-radius:12px; background:var(--bg-input); transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+  .secret-card.unlocked { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-soft), 0 8px 25px var(--accent-soft); }
+  .secret-icon { width:38px; height:38px; border-radius:11px; display:grid; place-items:center; flex:0 0 auto; background:var(--bg-elevated); color:var(--text-muted); border:1px solid var(--border); font-size:18px; }
+  .secret-card.unlocked .secret-icon { color:var(--accent); background:var(--accent-soft); }
+  .secret-meta { min-width:0; flex:1; }
+  .secret-name { font-weight:700; font-size:13px; }
+  .secret-desc { color:var(--text-muted); font-size:11px; line-height:1.4; margin-top:2px; }
+  .secret-status { font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); font-weight:700; }
+  .secret-card.unlocked .secret-status { color:var(--accent); }
+  .achievement-pop { position:fixed; right:18px; top:18px; z-index:1200; width:min(360px,calc(100vw - 36px)); padding:13px 15px; border:1px solid var(--accent); border-radius:14px; background:color-mix(in srgb,var(--bg-elevated) 92%, transparent); box-shadow:0 18px 55px var(--shadow), 0 0 30px var(--accent-soft); display:flex; align-items:center; gap:11px; animation:achievementIn .42s cubic-bezier(.22,1,.36,1) both; backdrop-filter:blur(12px); }
+  .achievement-pop.leaving { animation:achievementOut .35s ease forwards; }
+  .achievement-pop .secret-icon { width:34px; height:34px; font-size:16px; }
+  .achievement-kicker { font-size:9px; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); font-weight:800; }
+  .achievement-title { font-size:14px; font-weight:800; margin-top:2px; }
+  .achievement-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+  @keyframes achievementIn { from { opacity:0; transform:translateY(-16px) scale(.94); } to { opacity:1; transform:translateY(0) scale(1); } }
+  @keyframes achievementOut { to { opacity:0; transform:translateY(-12px) scale(.97); } }
+  .games-tab.secret-angry { color:var(--danger); opacity:1; animation:angryGame .45s ease-in-out infinite alternate; cursor:pointer; }
+  .games-tab.secret-angry .badge-soon { border-color:var(--danger); color:var(--danger); }
+  @keyframes angryGame { from { transform:translateX(-2px) rotate(-1deg); } to { transform:translateX(2px) rotate(1deg); } }
+  .secret-nova-overlay { position:fixed; inset:0; z-index:1100; display:none; background:#08000f; color:#fff; overflow:auto; }
+  .secret-nova-overlay.open { display:block; animation:fadeIn .25s ease both; }
+  .secret-nova-shell { min-height:100dvh; padding:clamp(22px,5vw,60px); display:grid; place-items:center; background:radial-gradient(circle at 50% 35%, rgba(180,60,255,.25), transparent 45%), radial-gradient(circle at 20% 80%, rgba(60,100,255,.18), transparent 40%), #08000f; }
+  .secret-nova-card { width:min(760px,100%); border:1px solid rgba(214,107,255,.45); border-radius:24px; padding:clamp(22px,5vw,46px); background:rgba(18,5,30,.78); box-shadow:0 30px 100px rgba(120,40,255,.25); backdrop-filter:blur(18px); }
+  .secret-nova-card h2 { margin:0 0 8px; font-size:clamp(28px,6vw,54px); }
+  .secret-nova-card p { color:#c9b7d9; line-height:1.7; }
+  .secret-nova-link { display:inline-flex; margin-top:12px; padding:10px 14px; border:1px solid rgba(214,107,255,.55); border-radius:10px; color:#fff; text-decoration:none; background:rgba(214,107,255,.12); }
+  .secret-nova-link:hover { background:rgba(214,107,255,.22); }
   .app-dialog-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.58);align-items:center;justify-content:center;z-index:500;padding:20px;animation:fadeIn .16s ease both}.app-dialog-backdrop.open{display:flex}.app-dialog{width:min(420px,calc(100vw - 40px));background:var(--bg-elevated);border:1px solid var(--border);border-radius:16px;padding:22px;box-shadow:0 24px 70px var(--shadow);animation:scaleIn .2s cubic-bezier(.22,1,.36,1) both}.app-dialog h2{margin:0 0 8px;font-size:17px}.app-dialog p{margin:0;color:var(--text-muted);font-size:13.5px;line-height:1.5;white-space:pre-wrap}.app-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.app-dialog-actions .danger{color:var(--danger);border-color:var(--danger)}.ui-icon{width:16px;height:16px;flex:0 0 auto;display:block;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.icon-btn.icon-label{align-items:center;gap:7px;padding:7px 9px}.theme-btn-label{font-size:12px;font-weight:600}
   /* ---------- Responsive / scalable layout ---------- */
   #app { min-height:100dvh; }
@@ -583,7 +613,7 @@
     <ul class="channel-list dm-list" id="dm-list"></ul>
 
     <div class="section-label" style="margin-top:6px;">Games</div>
-    <div class="games-tab"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M8 9h8a5 5 0 0 1 4.8 6.4l-.7 2.3a2.5 2.5 0 0 1-4.4.7L14 16H10l-1.7 2.4a2.5 2.5 0 0 1-4.4-.7l-.7-2.3A5 5 0 0 1 8 9Z"/><path d="M8 12v4M6 14h4M16.5 13.5h.01M19 15h.01"/></svg>Multiplayer Games <span class="badge-soon">Soon</span></div>
+    <div class="games-tab" id="games-tab" role="button" tabindex="0"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M8 9h8a5 5 0 0 1 4.8 6.4l-.7 2.3a2.5 2.5 0 0 1-4.4.7L14 16H10l-1.7 2.4a2.5 2.5 0 0 1-4.4-.7l-.7-2.3A5 5 0 0 1 8 9Z"/><path d="M8 12v4M6 14h4M16.5 13.5h.01M19 15h.01"/></svg>Multiplayer Games <span class="badge-soon">Soon</span></div>
 
     <div class="sidebar-spacer"></div>
 
@@ -643,7 +673,7 @@
 <!-- ===== Update changelog ===== -->
 <div class="changelog-backdrop" id="changelog-backdrop" role="dialog" aria-modal="true" aria-labelledby="changelog-title">
   <div class="changelog-card">
-    <h2 id="changelog-title">What's new in Yappathon v19</h2>
+    <h2 id="changelog-title">What's new in Yappathon v0.7</h2>
     <div class="changelog-sub">Update changelog</div>
     <ul class="changelog-list">
       <li>Fixed the Hidden DMs layout and made the Show buttons compact and properly aligned.</li>
@@ -651,13 +681,27 @@
       <li>Added clearer avatar upload/save feedback so failed profile updates are no longer silent.</li>
       <li>Added <strong>The Nova Special</strong> theme with its own purple-blue glow.</li>
       <li>Nova Special now has a longer single flash and a subtle animated starfield.</li>
-      <li>Added an in-app changelog that appears once whenever a new app version is opened.</li>
+      <li>Added a Secrets menu with unlockable Nova achievements and in-app unlock popups.</li>
+      <li>Added the Gamer, An old friend, Self Obsessed, Stick BUGged, and Impatient secrets.</li>
+      <li>Typing <strong>nova</strong> unlocks a secret Nova interface.</li>
+      <li>The Multiplayer Games button now has a secret reaction after repeated clicks.</li>
       <li>Kept the responsive layout, DM hiding, reactions, editing, mentions, and other v18 features intact.</li>
     </ul>
     <div class="changelog-actions"><button class="btn primary" id="changelog-close">Got it</button></div>
   </div>
 </div>
 
+<div class="secret-nova-overlay" id="secret-nova-overlay" aria-hidden="true">
+  <div class="secret-nova-shell">
+    <div class="secret-nova-card">
+      <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#D66BFF;font-weight:800;">NOVA // OLD FRIEND</div>
+      <h2>An old friend</h2>
+      <p>You found the Nova secret. The app has switched into the hidden Nova interface.</p>
+      <a class="secret-nova-link" href="https://github.com/entity387/Secret-NOVA" target="_blank" rel="noopener noreferrer">Open Secret-NOVA on GitHub</a>
+      <div style="margin-top:20px;"><button class="btn" id="secret-nova-back">Return to Yappathon</button></div>
+    </div>
+  </div>
+</div>
 <div class="nova-flash" id="nova-flash" aria-hidden="true"></div>
 
 <!-- ===== Settings modal ===== -->
@@ -671,6 +715,7 @@
       <div class="settings-tabs">
         <button class="settings-tab-btn active" data-tab="profile" type="button"><svg class="ui-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Profile</button>
         <button class="settings-tab-btn" data-tab="timetable" type="button"><svg class="ui-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>Timetable</button>
+        <button class="settings-tab-btn" data-tab="secrets" type="button"><svg class="ui-icon" viewBox="0 0 24 24"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.2 5.9-.9L12 3Z"/></svg>Secrets</button>
       </div>
       <div class="settings-content">
 
@@ -714,6 +759,12 @@
           <div class="tt-grid-wrap">
             <table class="tt-grid" id="tt-grid-table"></table>
           </div>
+        </div>
+
+        <div class="settings-pane" id="pane-secrets">
+          <div class="settings-section-title">Secrets</div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:6px;">Some things in Yappathon are better discovered than explained. Unlock secrets by doing very specific things.</div>
+          <div class="secrets-list" id="secrets-list"></div>
         </div>
 
       </div>
@@ -875,6 +926,7 @@ const currentDomain = location.hostname;
 // ---------- helpers ----------
 const $ = (id) => document.getElementById(id);
 function toast(msg, type="danger") {
+  if (type !== 'info' && typeof window.__yappathonUnlockError === 'function') window.__yappathonUnlockError();
   const el = document.createElement('div');
   el.className = 'toast' + (type === 'info' ? ' info' : '');
   el.textContent = msg;
@@ -955,7 +1007,20 @@ const PERIODS = [
 ];
 const TT_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
-function emptyTtGrid() { return PERIODS.map(() => new Array(10).fill('')); }
+function emptyTtGrid() { return Object.fromEntries(PERIODS.map((_, i) => [String(i), new Array(10).fill('')])); }
+function ttRow(grid, i) {
+  if (!grid) return [];
+  if (Array.isArray(grid)) return grid[i] || [];
+  return grid[String(i)] || [];
+}
+function normalizeTtGrid(grid) {
+  const out = emptyTtGrid();
+  for (let i = 0; i < PERIODS.length; i++) {
+    const row = ttRow(grid, i);
+    for (let ci = 0; ci < 10; ci++) out[String(i)][ci] = row[ci] || '';
+  }
+  return out;
+}
 function formatTimeRange(s, e) {
   const fmt = (t) => {
     let [h, m] = t.split(':').map(Number);
@@ -999,7 +1064,7 @@ function computeCurrentClass(timetable, now) {
     const [eh, em] = p.end.split(':').map(Number);
     const s = sh * 60 + sm, e = eh * 60 + em;
     if (nowMins >= s && nowMins < e) {
-      const row = timetable.grid[i] || [];
+      const row = ttRow(timetable.grid, i);
       const subject = (row[col] || '').trim();
       return { period: p.label, subject: subject || null };
     }
@@ -1241,6 +1306,10 @@ function listenProfile(uid) {
     if (!snap.exists()) return;
     profile = { uid, ...snap.data() };
     hiddenDmIds = Array.isArray(profile.hiddenDms) ? profile.hiddenDms : [];
+    if (profile.secrets && typeof profile.secrets === 'object') {
+      Object.keys(profile.secrets).forEach(k => { if (profile.secrets[k] === true) unlockedSecrets.add(k); });
+      saveSecrets();
+    }
     userCache[uid] = profile;
     $('me-name').innerHTML = escapeHtml(profile.username) + (profile.role === 'admin' ? ' <span class="crown"><svg class="ui-icon" style="display:inline-block;vertical-align:-3px;width:13px;height:13px" viewBox="0 0 24 24"><path d="m4 7 4 4 4-7 4 7 4-4-2 12H6L4 7Z"/><path d="M6 21h12"/></svg></span>' : '');
     $('me-role').textContent = profile.role === 'admin' ? 'Admin' : 'Member';
@@ -2253,9 +2322,9 @@ function renderTtGridTable() {
       if (ci === 5) td.classList.add('tt-week-sep');
       const input = document.createElement('input');
       input.type = 'text'; input.maxLength = 40;
-      input.value = (ttGrid[ri] && ttGrid[ri][ci]) || '';
+      input.value = (ttRow(ttGrid, ri)[ci]) || '';
       input.placeholder = '—';
-      input.addEventListener('input', () => { ttGrid[ri][ci] = input.value; });
+      input.addEventListener('input', () => { ttGrid[String(ri)][ci] = input.value; });
       td.appendChild(input);
       tr.appendChild(td);
     }
@@ -2271,7 +2340,7 @@ $('tt-parse-btn').addEventListener('click', () => {
   lines.forEach((line, ri) => {
     if (ri >= PERIODS.length) return;
     const cells = line.split('\t').length > 1 ? line.split('\t') : line.split(/\s{2,}|,/);
-    for (let ci = 0; ci < 10; ci++) ttGrid[ri][ci] = (cells[ci] || '').trim();
+    for (let ci = 0; ci < 10; ci++) ttGrid[String(ri)][ci] = (cells[ci] || '').trim();
   });
   renderTtGridTable();
   toast('Grid filled in — review the cells below, then save.', 'info');
@@ -2293,7 +2362,7 @@ $('open-settings').addEventListener('click', () => {
   document.querySelectorAll('.settings-pane').forEach(p => p.classList.toggle('active', p.id === 'pane-profile'));
   const tt = profile.timetable;
   ttGrid = (tt && Array.isArray(tt.grid)) ? PERIODS.map((_, ri) => {
-    const row = tt.grid[ri] || [];
+    const row = ttRow(tt.grid, ri);
     return new Array(10).fill('').map((v, ci) => row[ci] || '');
   }) : emptyTtGrid();
   $('tt-enabled').checked = !!(tt && tt.enabled);
@@ -2340,7 +2409,7 @@ $('settings-save').addEventListener('click', async () => {
     enabled: $('tt-enabled').checked,
     weekAnchorMonday: isoDateStr(getMondayDate(new Date())),
     weekAnchorIndex: parseInt($('tt-week-select').value, 10) || 0,
-    grid: ttGrid
+    grid: normalizeTtGrid(ttGrid)
   };
   try {
     // Keep profile photos small enough for a Firestore document and save them
@@ -2388,8 +2457,124 @@ function setTheme(t) {
 }
 setTheme(localStorage.getItem('yapp-theme') || 'yapp-dark');
 
+// ---------- secrets / achievements ----------
+const SECRET_DEFS = [
+  { id:'gamer', name:'Gamer', icon:'⌘', desc:'Enter the Konami code. Nova achievement unlocked.' },
+  { id:'old-friend', name:'An old friend', icon:'✦', desc:'Type nova to uncover the hidden Nova interface.' },
+  { id:'self-obsessed', name:'Self Obsessed', icon:'◉', desc:'Spam your profile picture 10 times.' },
+  { id:'stick-bugged', name:'Stick BUGged', icon:'⚠', desc:'Encounter an application error.' },
+  { id:'impatient', name:'Impatient', icon:'»', desc:'Press Multiplayer Games 15 times.' }
+];
+let unlockedSecrets = new Set(JSON.parse(localStorage.getItem('yappathon-secrets') || '[]'));
+function saveSecrets(){ localStorage.setItem('yappathon-secrets', JSON.stringify([...unlockedSecrets])); }
+async function syncSecretToFirestore(id){
+  if(!currentUser) return;
+  try {
+    await updateDoc(doc(db, 'users', currentUser.uid), { [`secrets.${id}`]: true });
+  } catch(e) { console.warn('Secret sync failed:', e); }
+}
+function renderSecrets(){
+  const wrap = $('secrets-list');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  SECRET_DEFS.forEach(s=>{
+    const unlocked = unlockedSecrets.has(s.id);
+    const card=document.createElement('div');
+    card.className='secret-card'+(unlocked?' unlocked':'');
+    card.innerHTML=`<div class="secret-icon">${s.icon}</div><div class="secret-meta"><div class="secret-name">${escapeHtml(s.name)}</div><div class="secret-desc">${escapeHtml(s.desc)}</div></div><div class="secret-status">${unlocked?'Unlocked':'Locked'}</div>`;
+    wrap.appendChild(card);
+  });
+}
+function unlockSecret(id){
+  if(unlockedSecrets.has(id)) return false;
+  const s=SECRET_DEFS.find(x=>x.id===id);
+  if(!s) return false;
+  unlockedSecrets.add(id); saveSecrets(); renderSecrets(); showAchievementPopup(s); syncSecretToFirestore(id); return true;
+}
+function showAchievementPopup(s){
+  const old=document.querySelector('.achievement-pop'); if(old) old.remove();
+  const el=document.createElement('div'); el.className='achievement-pop';
+  el.innerHTML=`<div class="secret-icon">${s.icon}</div><div><div class="achievement-kicker">Nova achievement unlocked</div><div class="achievement-title">${escapeHtml(s.name)}</div><div class="achievement-sub">${escapeHtml(s.desc)}</div></div>`;
+  document.body.appendChild(el);
+  setTimeout(()=>{el.classList.add('leaving'); setTimeout(()=>el.remove(),360);},5200);
+}
+function openNovaSecret(){
+  $('secret-nova-overlay').classList.add('open');
+  $('secret-nova-overlay').setAttribute('aria-hidden','false');
+}
+$('secret-nova-back').addEventListener('click',()=>{
+  $('secret-nova-overlay').classList.remove('open');
+  $('secret-nova-overlay').setAttribute('aria-hidden','true');
+});
+
+// Konami code: ↑ ↑ ↓ ↓ ← → ← → B A
+const konami = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+let konamiIndex=0;
+document.addEventListener('keydown',e=>{
+  const key=e.key.length===1 ? e.key.toLowerCase() : e.key;
+  if(key===konami[konamiIndex]){
+    konamiIndex++;
+    if(konamiIndex===konami.length){ konamiIndex=0; unlockSecret('gamer'); }
+  } else {
+    konamiIndex = key===konami[0] ? 1 : 0;
+  }
+});
+
+// Type "nova" anywhere in the app to unlock the old-friend secret.
+let novaBuffer='';
+let novaTimer=null;
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.altKey||e.metaKey||e.key.length!==1) return;
+  novaBuffer=(novaBuffer+e.key.toLowerCase()).slice(-4);
+  clearTimeout(novaTimer); novaTimer=setTimeout(()=>novaBuffer='',1800);
+  if(novaBuffer==='nova'){
+    novaBuffer='';
+    unlockSecret('old-friend');
+    setTimeout(()=>{ window.location.href='https://github.com/entity387/Secret-NOVA'; }, 1200);
+  }
+});
+
+// Profile-picture spam secret. Count clicks on either visible avatar.
+let avatarSpamCount=0;
+let avatarSpamTimer=null;
+function profileAvatarSecretClick(){
+  avatarSpamCount++;
+  clearTimeout(avatarSpamTimer);
+  avatarSpamTimer=setTimeout(()=>avatarSpamCount=0,5000);
+  if(avatarSpamCount>=10){ avatarSpamCount=0; unlockSecret('self-obsessed'); }
+}
+$('me-avatar').addEventListener('click',profileAvatarSecretClick);
+$('settings-avatar').addEventListener('click',profileAvatarSecretClick);
+
+// Multiplayer Games secret.
+let gamesClickCount=0;
+let gamesClickTimer=null;
+function gamesSecretClick(){
+  gamesClickCount++;
+  clearTimeout(gamesClickTimer);
+  gamesClickTimer=setTimeout(()=>gamesClickCount=0,7000);
+  if(gamesClickCount>=15){
+    gamesClickCount=0;
+    const g=$('games-tab');
+    g.classList.add('secret-angry');
+    g.innerHTML='<svg class="ui-icon" viewBox="0 0 24 24"><path d="M8 9h8a5 5 0 0 1 4.8 6.4l-.7 2.3a2.5 2.5 0 0 1-4.4.7L14 16H10l-1.7 2.4a2.5 2.5 0 0 1-4.4-.7l-.7-2.3A5 5 0 0 1 8 9Z"/><path d="M8 12v4M6 14h4M16.5 13.5h.01M19 15h.01"/></svg>STOP CLICKING ME <span class="badge-soon">ANGRY</span>';
+    unlockSecret('impatient');
+  }
+}
+$('games-tab').addEventListener('click',gamesSecretClick);
+$('games-tab').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ') {e.preventDefault();gamesSecretClick();}});
+
+// Error secret. Any uncaught runtime error or rejected promise unlocks it once.
+let errorSecretFired=false;
+function secretError(){ if(errorSecretFired) return; errorSecretFired=true; unlockSecret('stick-bugged'); }
+window.__yappathonUnlockError = secretError;
+window.addEventListener('error',secretError);
+window.addEventListener('unhandledrejection',secretError);
+
+renderSecrets();
+
 // ---------- update changelog ----------
-const YAPPATHON_VERSION = '21';
+const YAPPATHON_VERSION = '0.6';
 function showUpdateChangelog() {
   const key = 'yappathon-changelog-seen-v' + YAPPATHON_VERSION;
   if (localStorage.getItem(key)) return;
