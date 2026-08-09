@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Yappathon — Chat v20</title>
+<title>Yappathon — Chat v21</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23FF7A33'/%3E%3Cpath d='M14 20C14 16.13 17.13 13 21 13H43C46.87 13 50 16.13 50 20V34C50 37.87 46.87 41 43 41H26L18 48V41H21C17.13 41 14 37.87 14 34V20Z' fill='white'/%3E%3Ccircle cx='23' cy='27' r='3' fill='%23FF7A33'/%3E%3Ccircle cx='32' cy='27' r='3' fill='%23FF7A33'/%3E%3Ccircle cx='41' cy='27' r='3' fill='%23FF7A33'/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -184,6 +184,15 @@
   .dm-picker-row .dm-picker-check { width:16px; height:16px; border-radius:5px; border:1.5px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--accent-contrast); }
   .dm-picker-row.selected .dm-picker-check { background: var(--accent); border-color: var(--accent); }
   .dm-picker-empty { padding:16px; text-align:center; color: var(--text-muted); font-size:13px; }
+  .hidden-dm-list { display:flex; flex-direction:column; gap:6px; max-height:300px; overflow-y:auto; padding:4px 0; }
+  .hidden-dm-row { display:flex; align-items:center; gap:10px; width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:10px; background:var(--bg-input); color:var(--text); cursor:pointer; box-sizing:border-box; }
+  .hidden-dm-row:hover { border-color:var(--accent); background:var(--bg-elevated); }
+  .hidden-dm-row .hidden-dm-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13.5px; font-weight:600; }
+  .hidden-dm-row .hidden-dm-show { flex:0 0 auto; padding:6px 10px; border:1px solid var(--border); border-radius:7px; background:var(--bg-elevated); color:var(--text); font-size:12px; font-weight:600; cursor:pointer; }
+  .hidden-dm-row .hidden-dm-show:hover { border-color:var(--accent); color:var(--accent); }
+  .hidden-dm-empty { padding:18px 12px; text-align:center; border:1px dashed var(--border); border-radius:10px; color:var(--text-muted); font-size:13px; }
+  .avatar-upload-status { font-size:11px; color:var(--text-muted); margin-top:6px; }
+  .avatar-upload-status.error { color:var(--danger); }
 
   .context-menu { display:none; position:fixed; z-index:400; background: var(--bg-elevated); border:1px solid var(--border); border-radius:10px; box-shadow:0 12px 30px var(--shadow); padding:6px; min-width:160px; animation: scaleIn .15s cubic-bezier(.22,1,.36,1) both; }
   .context-menu.open { display:block; }
@@ -637,6 +646,9 @@
     <h2 id="changelog-title">What's new in Yappathon v19</h2>
     <div class="changelog-sub">Update changelog</div>
     <ul class="changelog-list">
+      <li>Fixed the Hidden DMs layout and made the Show buttons compact and properly aligned.</li>
+      <li>Fixed profile-picture processing and saving with smaller, Firestore-safe avatar compression.</li>
+      <li>Added clearer avatar upload/save feedback so failed profile updates are no longer silent.</li>
       <li>Added <strong>The Nova Special</strong> theme with its own purple-blue glow.</li>
       <li>Nova Special now has a longer single flash and a subtle animated starfield.</li>
       <li>Added an in-app changelog that appears once whenever a new app version is opened.</li>
@@ -666,8 +678,8 @@
           <div class="settings-section-title">Avatar</div>
           <div class="modal-avatar-row" style="margin-top:6px;">
             <img class="avatar" id="settings-avatar" style="width:60px;height:60px;" />
-            <button class="upload-btn" id="settings-upload-btn">Change avatar</button>
-            <input type="file" id="settings-file-input" accept="image/*" style="display:none;" />
+            <div style="display:flex;flex-direction:column;min-width:0;"><button class="upload-btn" id="settings-upload-btn" type="button">Change avatar</button><div class="avatar-upload-status" id="avatar-upload-status">PNG/JPG/WebP, max 150 KB after compression.</div></div>
+            <input type="file" id="settings-file-input" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none;" />
           </div>
           <label for="settings-username">Username</label>
           <input type="text" id="settings-username" maxlength="24" />
@@ -770,7 +782,7 @@
     </div>
     <div id="dm-hidden-panel" style="display:none;margin-top:16px;">
       <div style="font-size:13px;font-weight:700;margin-bottom:8px;">Hidden DMs</div>
-      <div id="hidden-dm-list"></div>
+      <div class="hidden-dm-list" id="hidden-dm-list"></div>
       <div style="display:flex;justify-content:flex-end;margin-top:12px;">
         <button class="btn" id="dm-hidden-back" type="button">Back to new message</button>
       </div>
@@ -919,13 +931,15 @@ function resizeImage(file, maxDim, quality) {
 
 
 async function resizeAvatarImage(file) {
-  let quality = 0.82;
-  let data = await resizeImage(file, 180, quality);
-  while (data.length > 240000 && quality > 0.35) {
-    quality -= 0.1;
-    data = await resizeImage(file, 180, quality);
+  if (!file || !file.type || !file.type.startsWith('image/')) throw new Error('Please choose an image file.');
+  if (file.size > 12 * 1024 * 1024) throw new Error('That image is too large to process. Choose one under 12 MB.');
+  let quality = 0.78;
+  let data = await resizeImage(file, 128, quality);
+  while (data.length > 150000 && quality > 0.28) {
+    quality -= 0.08;
+    data = await resizeImage(file, 128, quality);
   }
-  if (data.length > 240000) throw new Error('That profile picture is too large. Please choose a simpler or smaller image.');
+  if (data.length > 150000) throw new Error('That profile picture is still too large after compression. Please choose a simpler image.');
   return data;
 }
 
@@ -1311,14 +1325,14 @@ function renderHiddenDmList(list){
   const wrap=$('hidden-dm-list');
   wrap.innerHTML='';
   const hidden=list.filter(d=>hiddenDmIds.includes(d.id));
-  if(!hidden.length){ wrap.innerHTML='<div class="hidden-dm-empty">No hidden DMs</div>'; return; }
+  if(!hidden.length){ wrap.innerHTML='<div class="hidden-dm-empty">No hidden DMs yet.</div>'; return; }
   hidden.sort((a,b)=>dmDisplayUser(a).username.localeCompare(dmDisplayUser(b).username));
   hidden.forEach(d=>{
     const u=dmDisplayUser(d);
     const row=document.createElement('div'); row.className='hidden-dm-row';
-    const img=document.createElement('img'); img.className='dm-item-avatar'; renderAvatar(img,u);
-    const name=document.createElement('span'); name.textContent=u.username;
-    const unhide=document.createElement('button'); unhide.type='button'; unhide.textContent='Show';
+    const img=document.createElement('img'); img.className='dm-item-avatar'; img.width=20; img.height=20; renderAvatar(img,u);
+    const name=document.createElement('span'); name.className='hidden-dm-name'; name.textContent=u.username;
+    const unhide=document.createElement('button'); unhide.type='button'; unhide.className='hidden-dm-show'; unhide.textContent='Show';
     unhide.addEventListener('click',async e=>{e.stopPropagation(); await setDmHidden(d.id,false);});
     row.append(img,name,unhide);
     row.addEventListener('click',async()=>{await setDmHidden(d.id,false); switchDm(d.id); $('dm-hidden-panel').style.display='none'; $('dm-new-panel').style.display='block';});
@@ -2270,6 +2284,9 @@ $('tt-clear-btn').addEventListener('click', () => {
 $('open-settings').addEventListener('click', () => {
   $('settings-username').value = profile.username;
   $('settings-bio').value = profile.bio || '';
+  $('avatar-upload-status').classList.remove('error');
+  $('avatar-upload-status').textContent = 'PNG/JPG/WebP, max 150 KB after compression.';
+  stagedAvatar = null;
   $('settings-bio-count').textContent = `${($('settings-bio').value || '').length}/160`;
   $('settings-err').style.display = 'none';
   document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'profile'));
@@ -2295,11 +2312,20 @@ let stagedAvatar = null;
 $('settings-file-input').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
+  const status = $('avatar-upload-status');
+  status.classList.remove('error');
+  status.textContent = 'Processing image…';
   try {
     const dataUrl = await resizeAvatarImage(file);
     stagedAvatar = dataUrl;
     $('settings-avatar').src = dataUrl;
-  } catch (err) { toast(err.message); }
+    status.textContent = 'New avatar ready. Click Save changes to apply it.';
+  } catch (err) {
+    stagedAvatar = null;
+    status.classList.add('error');
+    status.textContent = err.message || 'Could not process that image.';
+    toast(err.message || 'Could not process that image.');
+  }
   e.target.value = '';
 });
 $('settings-save').addEventListener('click', async () => {
@@ -2317,12 +2343,23 @@ $('settings-save').addEventListener('click', async () => {
     grid: ttGrid
   };
   try {
+    // Keep profile photos small enough for a Firestore document and save them
+    // atomically with the other profile fields.
+    if (updates.photoBase64 && updates.photoBase64.length > 150000) {
+      throw new Error('The compressed avatar is still too large. Please choose another image.');
+    }
     await updateDoc(doc(db, 'users', currentUser.uid), updates);
     stagedAvatar = null;
+    $('avatar-upload-status').classList.remove('error');
+    $('avatar-upload-status').textContent = 'PNG/JPG/WebP, max 150 KB after compression.';
     $('settings-backdrop').classList.remove('open');
     toast('Settings saved.', 'info');
   } catch (e) {
-    err.textContent = "Couldn't save changes."; err.style.display = 'block';
+    console.error('Profile settings save failed:', e);
+    err.textContent = e && e.code === 'permission-denied'
+      ? "Couldn't save changes. Firebase rejected the profile update. Deploy the new Firestore rules."
+      : (e && e.message ? e.message : "Couldn't save changes. Please try again.");
+    err.style.display = 'block';
   }
 });
 
@@ -2352,7 +2389,7 @@ function setTheme(t) {
 setTheme(localStorage.getItem('yapp-theme') || 'yapp-dark');
 
 // ---------- update changelog ----------
-const YAPPATHON_VERSION = '20';
+const YAPPATHON_VERSION = '21';
 function showUpdateChangelog() {
   const key = 'yappathon-changelog-seen-v' + YAPPATHON_VERSION;
   if (localStorage.getItem(key)) return;
