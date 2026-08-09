@@ -717,7 +717,7 @@
           <div class="settings-section-title">Avatar</div>
           <div class="modal-avatar-row" style="margin-top:6px;">
             <img class="avatar" id="settings-avatar" style="width:60px;height:60px;" />
-            <div style="display:flex;flex-direction:column;min-width:0;"><button class="upload-btn" id="settings-upload-btn" type="button">Change avatar</button><div class="avatar-upload-status" id="avatar-upload-status">PNG/JPG/WebP, max 150 KB after compression.</div></div>
+            <div style="display:flex;flex-direction:column;min-width:0;"><button class="upload-btn" id="settings-upload-btn" type="button">Change avatar</button><div class="avatar-upload-status" id="avatar-upload-status">PNG/JPG/WebP, max 500 KB after compression.</div></div>
             <input type="file" id="settings-file-input" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none;" />
           </div>
           <label for="settings-username">Username</label>
@@ -981,11 +981,11 @@ async function resizeAvatarImage(file) {
   if (file.size > 12 * 1024 * 1024) throw new Error('That image is too large to process. Choose one under 12 MB.');
   let quality = 0.78;
   let data = await resizeImage(file, 128, quality);
-  while (data.length > 150000 && quality > 0.28) {
+  while (data.length > 700000 && quality > 0.28) {
     quality -= 0.08;
     data = await resizeImage(file, 128, quality);
   }
-  if (data.length > 150000) throw new Error('That profile picture is still too large after compression. Please choose a simpler image.');
+  if (data.length > 700000) throw new Error('That profile picture is still too large after compression. Please choose a simpler image.');
   return data;
 }
 
@@ -2348,7 +2348,7 @@ $('open-settings').addEventListener('click', () => {
   $('settings-username').value = profile.username;
   $('settings-bio').value = profile.bio || '';
   $('avatar-upload-status').classList.remove('error');
-  $('avatar-upload-status').textContent = 'PNG/JPG/WebP, max 150 KB after compression.';
+  $('avatar-upload-status').textContent = 'PNG/JPG/WebP, max 500 KB after compression.';
   stagedAvatar = null;
   $('settings-bio-count').textContent = `${($('settings-bio').value || '').length}/160`;
   $('settings-err').style.display = 'none';
@@ -2405,13 +2405,13 @@ $('settings-save').addEventListener('click', async () => {
   try {
     // Keep profile photos small enough for a Firestore document and save them
     // atomically with the other profile fields.
-    if (updates.photoBase64 && updates.photoBase64.length > 150000) {
+    if (updates.photoBase64 && updates.photoBase64.length > 700000) {
       throw new Error('The compressed avatar is still too large. Please choose another image.');
     }
     await updateDoc(doc(db, 'users', currentUser.uid), updates);
     stagedAvatar = null;
     $('avatar-upload-status').classList.remove('error');
-    $('avatar-upload-status').textContent = 'PNG/JPG/WebP, max 150 KB after compression.';
+    $('avatar-upload-status').textContent = 'PNG/JPG/WebP, max 500 KB after compression.';
     $('settings-backdrop').classList.remove('open');
     toast('Settings saved.', 'info');
   } catch (e) {
