@@ -673,19 +673,13 @@
 <!-- ===== Update changelog ===== -->
 <div class="changelog-backdrop" id="changelog-backdrop" role="dialog" aria-modal="true" aria-labelledby="changelog-title">
   <div class="changelog-card">
-    <h2 id="changelog-title">What's new in Yappathon v0.7</h2>
+    <h2 id="changelog-title">What's new in Yappathon v0.8</h2>
     <div class="changelog-sub">Update changelog</div>
     <ul class="changelog-list">
-      <li>Fixed the Hidden DMs layout and made the Show buttons compact and properly aligned.</li>
-      <li>Fixed profile-picture processing and saving with smaller, Firestore-safe avatar compression.</li>
-      <li>Added clearer avatar upload/save feedback so failed profile updates are no longer silent.</li>
-      <li>Added <strong>The Nova Special</strong> theme with its own purple-blue glow.</li>
-      <li>Nova Special now has a longer single flash and a subtle animated starfield.</li>
-      <li>Added a Secrets menu with unlockable Nova achievements and in-app unlock popups.</li>
-      <li>Added the Gamer, An old friend, Self Obsessed, Stick BUGged, and Impatient secrets.</li>
-      <li>Typing <strong>nova</strong> unlocks a secret Nova interface.</li>
-      <li>The Multiplayer Games button now has a secret reaction after repeated clicks.</li>
-      <li>Kept the responsive layout, DM hiding, reactions, editing, mentions, and other v18 features intact.</li>
+      <li><strong>Fixed profile saves:</strong> Firestore rules now correctly handle optional profile fields, avatars, hidden DMs, secrets, and timetables.</li>
+      <li><strong>Fixed timetable saves:</strong> the 7×10 timetable remains stored in a Firestore-safe map structure.</li>
+      <li><strong>Fixed runtime errors:</strong> the secret keyboard listeners now safely handle browsers/events where <code>event.key</code> is unavailable.</li>
+      <li><strong>Secrets are synced:</strong> unlocked secrets can now be stored safely on the user profile.</li>
     </ul>
     <div class="changelog-actions"><button class="btn primary" id="changelog-close">Got it</button></div>
   </div>
@@ -2511,7 +2505,7 @@ $('secret-nova-back').addEventListener('click',()=>{
 const konami = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
 let konamiIndex=0;
 document.addEventListener('keydown',e=>{
-  const key=e.key.length===1 ? e.key.toLowerCase() : e.key;
+  const rawKey = typeof e.key === 'string' ? e.key : ''; if (!rawKey) return; const key=rawKey.length===1 ? rawKey.toLowerCase() : rawKey;
   if(key===konami[konamiIndex]){
     konamiIndex++;
     if(konamiIndex===konami.length){ konamiIndex=0; unlockSecret('gamer'); }
@@ -2524,7 +2518,7 @@ document.addEventListener('keydown',e=>{
 let novaBuffer='';
 let novaTimer=null;
 document.addEventListener('keydown',e=>{
-  if(e.ctrlKey||e.altKey||e.metaKey||e.key.length!==1) return;
+  if(e.ctrlKey||e.altKey||e.metaKey||typeof e.key !== 'string'||e.key.length!==1) return;
   novaBuffer=(novaBuffer+e.key.toLowerCase()).slice(-4);
   clearTimeout(novaTimer); novaTimer=setTimeout(()=>novaBuffer='',1800);
   if(novaBuffer==='nova'){
@@ -2574,7 +2568,7 @@ window.addEventListener('unhandledrejection',secretError);
 renderSecrets();
 
 // ---------- update changelog ----------
-const YAPPATHON_VERSION = '0.6';
+const YAPPATHON_VERSION = '0.8';
 function showUpdateChangelog() {
   const key = 'yappathon-changelog-seen-v' + YAPPATHON_VERSION;
   if (localStorage.getItem(key)) return;
