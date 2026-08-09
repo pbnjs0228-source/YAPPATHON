@@ -540,7 +540,7 @@
     <div class="section-label">Channels <button id="add-channel-btn" title="Create channel">+</button></div>
     <ul class="channel-list" id="channel-list"></ul>
 
-    <div class="section-label" style="margin-top:6px;">Direct Messages <button id="add-dm-btn" title="New direct message">+</button></div>
+    <div class="section-label dm-section" style="margin-top:6px;position:relative;">Direct Messages <button id="add-dm-btn" title="New direct message or hidden DMs">+</button><div class="hidden-dm-panel" id="hidden-dm-panel"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 6px 8px;"><div class="hidden-dm-title" style="padding:0;">Hidden DMs</div><button id="hidden-new-dm" class="btn" type="button" style="padding:4px 8px;font-size:11px;">New DM</button></div><div id="hidden-dm-list"></div></div></div>
     <ul class="channel-list dm-list" id="dm-list"></ul>
 
     <div class="section-label" style="margin-top:6px;">Games</div>
@@ -747,6 +747,8 @@
   <hr>
   <button id="ctx-block" class="danger"><svg class="ui-icon" style="display:inline-block;vertical-align:-3px;margin-right:7px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></svg>Block</button>
 </div>
+<div class="context-menu" id="dm-context-menu"><button id="ctx-hide-dm"><svg class="ui-icon" style="display:inline-block;vertical-align:-3px;margin-right:7px" viewBox="0 0 24 24"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>Hide DM</button></div>
+<div class="context-menu channel-context" id="channel-context-menu"><button id="ctx-delete-channel" class="danger"><svg class="ui-icon" style="display:inline-block;vertical-align:-3px;margin-right:7px" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M8 7l1 13h6l1-13M10 11v5M14 11v5"/></svg>Delete channel</button></div>
 <div class="mention-picker" id="mention-picker" role="listbox" aria-label="Mention a user"></div>
 
 <div id="lightbox"><img id="lightbox-img" /></div>
@@ -760,7 +762,7 @@ import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, deleteDoc,
+  getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, addDoc, deleteDoc,
   onSnapshot, query, orderBy, serverTimestamp, limit, where, arrayUnion, arrayRemove
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -941,6 +943,7 @@ let currentConvoType = 'channel'; // 'channel' | 'dm'
 let currentChannel = 'general';
 let currentDmId = null;
 let dmCache = {};          // dmId -> dm doc data, live-updated
+let hiddenDmIds = [];      // DMs hidden only for the current user
 let unsubMessages = null;
 let unsubChannels = null;
 let unsubMembers = null;
@@ -1163,6 +1166,7 @@ function listenProfile(uid) {
   onSnapshot(doc(db, 'users', uid), (snap) => {
     if (!snap.exists()) return;
     profile = { uid, ...snap.data() };
+    hiddenDmIds = Array.isArray(profile.hiddenDms) ? profile.hiddenDms : [];
     userCache[uid] = profile;
     $('me-name').innerHTML = escapeHtml(profile.username) + (profile.role === 'admin' ? ' <span class="crown"><svg class="ui-icon" style="display:inline-block;vertical-align:-3px;width:13px;height:13px" viewBox="0 0 24 24"><path d="m4 7 4 4 4-7 4 7 4-4-2 12H6L4 7Z"/><path d="M6 21h12"/></svg></span>' : '');
     $('me-role').textContent = profile.role === 'admin' ? 'Admin' : 'Member';
@@ -1183,6 +1187,10 @@ function listenChannels() {
       li.className = 'channel-item' + (currentConvoType === 'channel' && name === currentChannel ? ' active' : '');
       li.innerHTML = `<span class="hash">#</span><span>${escapeHtml(name)}</span>`;
       li.addEventListener('click', () => switchChannel(name));
+      li.addEventListener('contextmenu', (e) => {
+        if (!profile || profile.role !== 'admin') return;
+        e.preventDefault(); openChannelContextMenu(li, name);
+      });
       list.appendChild(li);
     });
     // admin-only create button visibility
@@ -1212,6 +1220,7 @@ function listenDms() {
     const list = [];
     snap.forEach(d => { const data = { id: d.id, ...d.data() }; dmCache[d.id] = data; list.push(data); });
     renderDmList(list);
+    renderHiddenDmList(list);
     if (currentConvoType === 'dm' && currentDmId) renderConvoHeader(); // keep header fresh (e.g. group rename)
   }, handleFirestoreError('direct messages'));
 }
@@ -1220,7 +1229,7 @@ function renderDmList(list) {
   list.sort((a, b) => dmDisplayUser(a).username.localeCompare(dmDisplayUser(b).username));
   const wrap = $('dm-list');
   wrap.innerHTML = '';
-  list.forEach(d => {
+  list.filter(d => !hiddenDmIds.includes(d.id)).forEach(d => {
     const u = dmDisplayUser(d);
     const li = document.createElement('li');
     li.className = 'channel-item' + (currentConvoType === 'dm' && currentDmId === d.id ? ' active' : '');
@@ -1233,8 +1242,36 @@ function renderDmList(list) {
     li.appendChild(img);
     li.appendChild(nameSpan);
     li.addEventListener('click', () => switchDm(d.id));
+    li.addEventListener('contextmenu', (e) => { e.preventDefault(); openDmContextMenu(li, d.id); });
     wrap.appendChild(li);
   });
+}
+
+function renderHiddenDmList(list){
+  const wrap=$('hidden-dm-list');
+  wrap.innerHTML='';
+  const hidden=list.filter(d=>hiddenDmIds.includes(d.id));
+  if(!hidden.length){ wrap.innerHTML='<div class="hidden-dm-empty">No hidden DMs</div>'; return; }
+  hidden.sort((a,b)=>dmDisplayUser(a).username.localeCompare(dmDisplayUser(b).username));
+  hidden.forEach(d=>{
+    const u=dmDisplayUser(d);
+    const row=document.createElement('div'); row.className='hidden-dm-row';
+    const img=document.createElement('img'); img.className='dm-item-avatar'; renderAvatar(img,u);
+    const name=document.createElement('span'); name.textContent=u.username;
+    const unhide=document.createElement('button'); unhide.type='button'; unhide.textContent='Show';
+    unhide.addEventListener('click',async e=>{e.stopPropagation(); await setDmHidden(d.id,false);});
+    row.append(img,name,unhide);
+    row.addEventListener('click',async()=>{await setDmHidden(d.id,false); switchDm(d.id); $('hidden-dm-panel').classList.remove('open');});
+    wrap.appendChild(row);
+  });
+}
+async function setDmHidden(dmId, hidden){
+  if(!profile) return;
+  try{
+    await updateDoc(doc(db,'users',profile.uid),{hiddenDms:hidden ? arrayUnion(dmId) : arrayRemove(dmId)});
+    if(hidden && currentConvoType==='dm' && currentDmId===dmId){ switchChannel('general'); }
+    toast(hidden?'DM hidden.':'DM restored.','info');
+  }catch(e){ toast("Couldn't update that DM."); }
 }
 
 function renderConvoHeader() {
@@ -1757,6 +1794,31 @@ function renderMembers(list) {
   });
 }
 
+let ctxTargetDmId=null; let ctxTargetChannel=null;
+function openDmContextMenu(row,dmId){
+  ctxTargetDmId=dmId; const menu=$('dm-context-menu'); menu.classList.add('open'); menu.style.left='0px'; menu.style.top='0px';
+  requestAnimationFrame(()=>{const r=row.getBoundingClientRect(),m=menu.getBoundingClientRect(),gap=6,margin=8; let left=Math.max(margin,Math.min(r.left,innerWidth-m.width-margin)); let top=r.bottom+gap; if(top+m.height>innerHeight-margin) top=r.top-m.height-gap; top=Math.max(margin,Math.min(top,innerHeight-m.height-margin)); menu.style.left=left+'px'; menu.style.top=top+'px';});
+}
+function openChannelContextMenu(row,name){
+  ctxTargetChannel=name; const menu=$('channel-context-menu'); menu.classList.add('open'); menu.style.left='0px'; menu.style.top='0px';
+  requestAnimationFrame(()=>{const r=row.getBoundingClientRect(),m=menu.getBoundingClientRect(),gap=6,margin=8; let left=Math.max(margin,Math.min(r.left,innerWidth-m.width-margin)); let top=r.bottom+gap; if(top+m.height>innerHeight-margin) top=r.top-m.height-gap; top=Math.max(margin,Math.min(top,innerHeight-m.height-margin)); menu.style.left=left+'px'; menu.style.top=top+'px';});
+}
+function closeExtraContextMenus(){ $('dm-context-menu').classList.remove('open'); $('channel-context-menu').classList.remove('open'); ctxTargetDmId=null; ctxTargetChannel=null; }
+$('ctx-hide-dm').addEventListener('click',async()=>{if(ctxTargetDmId) await setDmHidden(ctxTargetDmId,true); closeExtraContextMenus();});
+$('ctx-delete-channel').addEventListener('click',async()=>{
+  const name=ctxTargetChannel; closeExtraContextMenus(); if(!name||!profile||profile.role!=='admin') return;
+  if(name==='general'){toast('The general channel cannot be deleted.');return;}
+  const ok=await appConfirm(`Delete #${name} and all of its messages? This cannot be undone.`,'Delete public channel','Delete',true); if(!ok)return;
+  try{
+    const msgs=await getDocs(collection(db,'channels',name,'messages'));
+    await Promise.all(msgs.docs.map(x=>deleteDoc(x.ref)));
+    await deleteDoc(doc(db,'channels',name));
+    if(currentConvoType==='channel'&&currentChannel===name) switchChannel('general');
+    toast(`Deleted #${name}.`,'info');
+  }catch(e){toast("Couldn't delete that channel.");}
+});
+document.addEventListener('click',(e)=>{ if(!e.target.closest('#dm-context-menu')&&!e.target.closest('#channel-context-menu')) closeExtraContextMenus(); });
+
 // ---------- member profile popup ----------
 function openProfile(uid) {
   const u = userCache[uid];
@@ -1911,7 +1973,8 @@ function renderDmPickerList(filter) {
     wrap.appendChild(row);
   });
 }
-$('add-dm-btn').addEventListener('click', openNewDmModal);
+$('add-dm-btn').addEventListener('click', (e) => { e.stopPropagation(); $('hidden-dm-panel').classList.toggle('open'); renderHiddenDmList(Object.values(dmCache)); });
+$('hidden-new-dm').addEventListener('click', (e) => { e.stopPropagation(); $('hidden-dm-panel').classList.remove('open'); openNewDmModal(); });
 $('dm-search').addEventListener('input', () => renderDmPickerList($('dm-search').value));
 $('dm-cancel').addEventListener('click', () => $('dm-backdrop').classList.remove('open'));
 $('dm-create').addEventListener('click', async () => {
@@ -2205,6 +2268,7 @@ $('settings-save').addEventListener('click', async () => {
 $('theme-btn').addEventListener('click', () => $('theme-menu').classList.toggle('open'));
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.theme-picker')) $('theme-menu').classList.remove('open');
+  if (!e.target.closest('.dm-section')) $('hidden-dm-panel').classList.remove('open');
 });
 document.querySelectorAll('.theme-opt').forEach(opt => {
   opt.addEventListener('click', () => setTheme(opt.dataset.theme));
