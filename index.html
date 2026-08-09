@@ -235,6 +235,26 @@
   .msg-img { margin-top:6px; max-width:320px; max-height:320px; border-radius:10px; border:1px solid var(--border); cursor:zoom-in; display:block; transition: transform .18s ease, filter .18s ease; }
   .msg-img:hover { transform: scale(1.02); filter: brightness(1.05); }
   .msg-del { background:none; border:none; color:var(--text-muted); opacity:0; font-size:12px; margin-left:auto; align-self:flex-start; transition: opacity .15s ease, color .15s ease; }
+  .msg-actions { display:flex; align-items:center; gap:4px; margin-top:5px; min-height:24px; opacity:0; transition:opacity .12s ease; }
+  .msg-row:hover .msg-actions, .msg-actions:focus-within { opacity:1; }
+  .msg-action { border:1px solid transparent; background:transparent; color:var(--text-muted); border-radius:7px; padding:3px 6px; font-size:11px; cursor:pointer; }
+  .msg-action:hover { background:var(--bg-input); color:var(--text); border-color:var(--border); }
+  .reaction-list { display:flex; flex-wrap:wrap; gap:4px; margin-top:5px; }
+  .reaction-chip { border:1px solid var(--border); background:var(--bg-input); color:var(--text); border-radius:12px; padding:2px 7px; font-size:11px; cursor:pointer; }
+  .reaction-chip.active { border-color:var(--accent); background:var(--accent-soft); }
+  .reaction-picker { display:none; position:absolute; left:8px; bottom:calc(100% + 5px); z-index:20; background:var(--bg-elevated); border:1px solid var(--border); border-radius:10px; padding:5px; box-shadow:0 10px 25px var(--shadow); gap:2px; }
+  .reaction-picker.open { display:flex; }
+  .reaction-picker button { border:0; background:transparent; font-size:18px; padding:4px; border-radius:6px; cursor:pointer; }
+  .reaction-picker button:hover { background:var(--bg-input); }
+  .msg-edit-box { width:100%; background:var(--bg-input); border:1px solid var(--accent); color:var(--text); border-radius:8px; padding:8px 10px; font:inherit; resize:vertical; min-height:42px; }
+  .msg-edit-actions { display:flex; gap:6px; margin-top:6px; }
+  .mention { color:var(--accent); background:var(--accent-soft); border-radius:4px; padding:0 2px; cursor:pointer; font-weight:600; }
+  .mention-picker { position:fixed; display:none; z-index:450; width:230px; max-height:240px; overflow:auto; background:var(--bg-elevated); border:1px solid var(--border); border-radius:10px; box-shadow:0 12px 30px var(--shadow); padding:5px; }
+  .mention-picker.open { display:block; }
+  .mention-option { display:flex; align-items:center; gap:8px; width:100%; border:0; background:transparent; color:var(--text); padding:7px 8px; border-radius:7px; cursor:pointer; text-align:left; }
+  .mention-option:hover, .mention-option.selected { background:var(--bg-input); }
+  .mention-option .avatar { width:24px; height:24px; font-size:9px; }
+  .mention-option-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .msg-row:hover .msg-del { opacity:1; }
   .msg-del:hover { color: var(--danger); }
   .day-divider { display:flex; align-items:center; gap:10px; color: var(--text-muted); font-size:11px; margin: 14px 0 8px; text-transform:uppercase; letter-spacing:.06em; animation: fadeIn .4s ease both; }
@@ -331,9 +351,6 @@
   .tt-grid input::placeholder { color: var(--text-muted); opacity:.5; }
   .tt-week-sep { border-left:2px solid var(--accent) !important; }
   .tt-paste-row { display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap; }
-  .tt-img-drop { border:2px dashed var(--border); border-radius:10px; padding:20px 16px; text-align:center; color: var(--text-muted); font-size:12.5px; margin-top:10px; cursor:pointer; transition: border-color .15s ease, background .15s ease, opacity .15s ease; }
-  .tt-img-drop:hover, .tt-img-drop.drag { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
-  .tt-img-drop.busy { opacity:.6; pointer-events:none; }
   .tt-divider { display:flex; align-items:center; gap:10px; color: var(--text-muted); font-size:11px; margin: 18px 0 4px; text-transform:uppercase; letter-spacing:.06em; }
   .tt-divider::before, .tt-divider::after { content:''; height:1px; background: var(--border); flex:1; }
 
@@ -514,13 +531,6 @@
           </select>
           <div class="tt-hint">This anchors your two-week rotation — set it correctly once and future weeks alternate automatically.</div>
 
-          <div class="settings-section-title" style="margin-top:18px;">Scan from a screenshot</div>
-          <div class="tt-img-drop" id="tt-img-drop" tabindex="0" role="button">
-            <svg class="ui-icon" style="display:inline-block;vertical-align:-3px;margin-right:5px" viewBox="0 0 24 24"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg>Click to upload, drag a file here, or paste (Ctrl/Cmd+V) a screenshot of your timetable
-          </div>
-          <input type="file" id="tt-img-file" accept="image/*" style="display:none;" />
-          <div class="tt-hint">Reads the image using OpenRouter's free tier, with your own free API key — entered once and stored only in this browser — <button type="button" class="link-btn" id="tt-api-key-btn">set API key</button>.</div>
-
           <div class="tt-divider"><span>or</span></div>
 
           <label for="tt-paste">Paste as text</label>
@@ -541,27 +551,6 @@
     <div class="modal-actions">
       <button class="btn" id="settings-cancel">Cancel</button>
       <button class="btn primary" id="settings-save">Save changes</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== OpenRouter API key modal (for timetable image scan) ===== -->
-<div class="modal-backdrop" id="apikey-backdrop">
-  <div class="modal" style="max-width:420px;">
-    <h2>OpenRouter API key</h2>
-    <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0 0 4px;">
-      Used only in this browser to let a free vision model read your timetable screenshot. It's stored in this browser's local storage and sent directly to OpenRouter's API when you scan an image — never anywhere else. Because it's used straight from the browser, anyone with access to dev tools on this device could see it, so only do this on a device you trust. Get a free key (no credit card needed) at
-      <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.
-    </p>
-    <label for="apikey-input">API key</label>
-    <input type="password" id="apikey-input" placeholder="sk-or-v1-…" autocomplete="off" />
-    <div class="modal-err" id="apikey-err"></div>
-    <div class="modal-actions" style="justify-content:space-between;">
-      <button class="btn danger-ghost" id="apikey-clear" type="button">Clear saved key</button>
-      <div style="display:flex; gap:10px;">
-        <button class="btn" id="apikey-cancel" type="button">Cancel</button>
-        <button class="btn primary" id="apikey-save" type="button">Save</button>
-      </div>
     </div>
   </div>
 </div>
@@ -642,10 +631,12 @@
 
 <!-- ===== Right-click context menu (member list) ===== -->
 <div class="context-menu" id="member-context-menu">
+  <button id="ctx-view-profile"><svg class="ui-icon" style="display:inline-block;vertical-align:-3px;margin-right:7px" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>View profile</button>
   <button id="ctx-create-dm"><svg class="ui-icon" style="display:inline-block;vertical-align:-3px;margin-right:7px" viewBox="0 0 24 24"><path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.8 8.8 0 0 1-4-.9L4 20l1.2-3.2A7.3 7.3 0 0 1 4 12a7.5 7.5 0 0 1 8-7.5 7.5 7.5 0 0 1 8 7Z"/></svg>Create DM</button>
   <hr>
   <button id="ctx-block" class="danger"><svg class="ui-icon" style="display:inline-block;vertical-align:-3px;margin-right:7px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></svg>Block</button>
 </div>
+<div class="mention-picker" id="mention-picker" role="listbox" aria-label="Mention a user"></div>
 
 <div id="lightbox"><img id="lightbox-img" /></div>
 <div class="toasts" id="toasts"></div>
@@ -753,6 +744,18 @@ function resizeImage(file, maxDim, quality) {
   });
 }
 
+
+async function resizeAvatarImage(file) {
+  let quality = 0.82;
+  let data = await resizeImage(file, 180, quality);
+  while (data.length > 240000 && quality > 0.35) {
+    quality -= 0.1;
+    data = await resizeImage(file, 180, quality);
+  }
+  if (data.length > 240000) throw new Error('That profile picture is too large. Please choose a simpler or smaller image.');
+  return data;
+}
+
 // ---------- timetable ----------
 const PERIODS = [
   { label: 'Morning Registration', start: '08:40', end: '08:47' },
@@ -794,78 +797,6 @@ function currentWeekIndexFor(timetable, now) {
   const weeksDiff = Math.round((thisMonday - anchorMonday) / (7 * 86400000));
   return (((timetable.weekAnchorIndex || 0) + weeksDiff) % 2 + 2) % 2;
 }
-const TT_KEY_STORAGE = 'yapp-openrouter-key';
-// OpenRouter's free-model roster changes over time — if this stops
-// working, check openrouter.ai/models for a current free ":free" model
-// with image input and swap it in here.
-const TT_SCAN_MODEL = 'google/gemma-4-31b-it:free';
-function buildTimetablePrompt() {
-  const rows = PERIODS.map(p => `- "${p.label}" (${formatTimeRange(p.start, p.end)})`).join('\n');
-  return `This image is a school timetable. Convert it into a fixed grid.
-
-The grid has exactly these 7 rows, in this order:
-${rows}
-
-Each row has exactly 10 columns: Week 1 Monday, Tuesday, Wednesday, Thursday, Friday, then Week 2 Monday, Tuesday, Wednesday, Thursday, Friday — left to right, matching the order the day columns appear in the image.
-
-For each cell, extract just the subject name shown for that period on that day (a short class code in parentheses is fine, but leave out room numbers and teacher names). If a period from the list above isn't shown in the image, or a cell is blank, use an empty string "" for it. If the image only shows a single week (5 day columns, not 10), put that week's data in the first 5 columns (Week 1) and use "" for all of Week 2's columns.
-
-Respond with ONLY raw JSON in exactly this shape, no markdown code fences, no explanation:
-{"grid": [["","","","","","","","","",""], ... one array per row listed above, 7 arrays total, each with exactly 10 strings]}`;
-}
-async function parseTimetableImage(dataUrl) {
-  const apiKey = localStorage.getItem(TT_KEY_STORAGE);
-  if (!apiKey) { toast('Add your free OpenRouter API key first.', 'info'); openApiKeyModal(); return; }
-  const dropEl = $('tt-img-drop');
-  const originalHtml = dropEl.innerHTML;
-  dropEl.classList.add('busy');
-  dropEl.textContent = 'Reading your timetable…';
-  try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': location.origin || 'https://yappathon.chat',
-        'X-Title': 'Yappathon'
-      },
-      body: JSON.stringify({
-        model: TT_SCAN_MODEL,
-        max_tokens: 2000,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'text', text: buildTimetablePrompt() },
-            { type: 'image_url', image_url: { url: dataUrl } }
-          ]
-        }]
-      })
-    });
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}));
-      throw new Error((errBody && errBody.error && errBody.error.message) || `Request failed (${res.status}).`);
-    }
-    const data = await res.json();
-    const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-    if (!text) throw new Error("Didn't get a readable response back.");
-    const cleaned = String(text).replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(cleaned);
-    if (!parsed || !Array.isArray(parsed.grid)) throw new Error('Unexpected response format.');
-    ttGrid = PERIODS.map((_, ri) => {
-      const row = Array.isArray(parsed.grid[ri]) ? parsed.grid[ri] : [];
-      return new Array(10).fill('').map((v, ci) => (typeof row[ci] === 'string' ? row[ci].slice(0, 60) : ''));
-    });
-    renderTtGridTable();
-    toast('Timetable read — check the grid below and adjust anything that looks off.', 'info');
-  } catch (err) {
-    console.error(err);
-    toast("Couldn't read that image: " + (err.message || 'unknown error') + ". You can still paste it as text below, or fill the grid in by hand.");
-  } finally {
-    dropEl.classList.remove('busy');
-    dropEl.innerHTML = originalHtml;
-  }
-}
-
 function computeCurrentClass(timetable, now) {
   now = now || new Date();
   if (!timetable || !timetable.enabled || !timetable.grid) return null;
@@ -903,6 +834,8 @@ let unsubMessages = null;
 let unsubChannels = null;
 let unsubMembers = null;
 let unsubDms = null;
+const seenMentionIds = new Set();
+let initialMentionSnapshot = true;
 let pendingImage = null;   // data URL staged for next message
 
 const DEFAULT_CHANNELS = ['general', 'random'];
@@ -1262,6 +1195,7 @@ function renderBlockedGroup(items) {
 
 function listenConvoMessages() {
   if (unsubMessages) unsubMessages();
+  initialMentionSnapshot = true;
   const q = query(convoMessagesCollection(), orderBy('timestamp', 'asc'), limit(200));
   unsubMessages = onSnapshot(q, (snap) => {
     const wrap = $('messages');
@@ -1280,6 +1214,12 @@ function listenConvoMessages() {
     };
     snap.forEach(d => {
       const m = d.data();
+      if (Array.isArray(m.mentions) && profile && m.uid !== profile.uid && m.mentions.includes(profile.uid)) {
+        if (!initialMentionSnapshot && !seenMentionIds.has(d.id)) {
+          toast(`${m.username || 'Someone'} mentioned you.`, 'info');
+        }
+        seenMentionIds.add(d.id);
+      }
       const ts = m.timestamp ? m.timestamp.toDate() : new Date();
       const dayKey = ts.toDateString();
       if (dayKey !== lastDay) {
@@ -1301,6 +1241,7 @@ function listenConvoMessages() {
       wrap.appendChild(renderMessage(d.id, m, ts, grouped));
       lastMsg = { uid: m.uid, ts };
     });
+    initialMentionSnapshot = false;
     flushBlockedRun();
     wrap.scrollTop = wrap.scrollHeight;
   }, handleFirestoreError(currentConvoType === 'dm' ? 'messages' : 'messages'));
@@ -1317,6 +1258,7 @@ function switchChannel(name) {
   });
   document.querySelectorAll('#dm-list .channel-item').forEach(el => el.classList.remove('active'));
   listenConvoMessages();
+  renderMembers(Object.values(userCache));
 }
 
 function switchDm(dmId) {
@@ -1329,6 +1271,7 @@ function switchDm(dmId) {
   document.querySelectorAll('#channel-list .channel-item').forEach(el => el.classList.remove('active'));
   renderDmList(Object.values(dmCache));
   listenConvoMessages();
+  renderMembers(Object.values(userCache));
 }
 
 // Creates (or reuses) a DM/group DM and switches to it.
@@ -1383,12 +1326,121 @@ async function openOrCreateDm(memberUids, groupName) {
   }
 }
 
-function renderMessage(id, m, ts, grouped) {
+function renderMentionText(text) {
+  const frag = document.createDocumentFragment();
+  const re = /@([A-Za-z0-9_.-]+)/g;
+  let last = 0, match;
+  while ((match = re.exec(text || ''))) {
+    if (match.index > last) frag.appendChild(document.createTextNode(text.slice(last, match.index)));
+    const username = match[1];
+    const uid = Object.keys(userCache).find(k => (userCache[k].username || '').toLowerCase() === username.toLowerCase());
+    if (uid) {
+      const span = document.createElement('span');
+      span.className = 'mention';
+      span.textContent = '@' + username;
+      span.title = 'View profile';
+      span.addEventListener('click', () => openProfile(uid));
+      frag.appendChild(span);
+    } else {
+      frag.appendChild(document.createTextNode(match[0]));
+    }
+    last = re.lastIndex;
+  }
+  if (last < (text || '').length) frag.appendChild(document.createTextNode((text || '').slice(last)));
+  return frag;
+}
 
+function reactionEntries(m) {
+  const r = m.reactions && typeof m.reactions === 'object' ? m.reactions : {};
+  return Object.entries(r).filter(([, users]) => Array.isArray(users) && users.length);
+}
+
+function renderReactions(id, m, row) {
+  const existing = row.querySelector('.reaction-list');
+  if (existing) existing.remove();
+  const entries = reactionEntries(m);
+  if (!entries.length) return;
+  const list = document.createElement('div');
+  list.className = 'reaction-list';
+  entries.forEach(([emoji, users]) => {
+    const chip = document.createElement('button');
+    chip.className = 'reaction-chip' + (profile && users.includes(profile.uid) ? ' active' : '');
+    chip.textContent = `${emoji} ${users.length}`;
+    chip.title = users.map(uid => userCache[uid]?.username || uid).join(', ');
+    chip.addEventListener('click', () => toggleReaction(id, emoji, m));
+    list.appendChild(chip);
+  });
+  row.querySelector('.msg-body').appendChild(list);
+}
+
+function addReactionPicker(id, m, row, actionBar) {
+  const picker = document.createElement('div');
+  picker.className = 'reaction-picker';
+  ['👍','❤️','😂','🎉','😮','😢'].forEach(emoji => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = emoji; b.title = `React ${emoji}`;
+    b.addEventListener('click', () => { toggleReaction(id, emoji, m); picker.classList.remove('open'); });
+    picker.appendChild(b);
+  });
+  row.appendChild(picker);
+  const reactBtn = document.createElement('button');
+  reactBtn.type = 'button'; reactBtn.className = 'msg-action'; reactBtn.textContent = 'React';
+  reactBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.reaction-picker.open').forEach(p => p.classList.remove('open'));
+    picker.classList.toggle('open');
+  });
+  actionBar.appendChild(reactBtn);
+}
+
+async function toggleReaction(id, emoji, m) {
+  if (!profile) return;
+  const current = {};
+  reactionEntries(m).forEach(([key, users]) => { current[key] = users.slice(); });
+  const users = current[emoji] || [];
+  if (users.includes(profile.uid)) current[emoji] = users.filter(uid => uid !== profile.uid);
+  else current[emoji] = [...users, profile.uid];
+  if (!current[emoji].length) delete current[emoji];
+  try {
+    await updateDoc(convoMessageDoc(id), { reactions: current });
+  } catch (e) {
+    toast(e && e.code === 'permission-denied' ? 'You do not have permission to react here.' : "Couldn't add that reaction.");
+  }
+}
+
+async function saveEditedMessage(id, textarea, m) {
+  const text = textarea.value.trim();
+  if (!text) { toast('A message cannot be empty.'); return; }
+  try {
+    await updateDoc(convoMessageDoc(id), { text, editedAt: serverTimestamp() });
+  } catch (e) {
+    toast(e && e.code === 'permission-denied' ? 'You can only edit your own messages.' : "Couldn't edit that message.");
+  }
+}
+
+function beginEditMessage(id, m, row) {
+  const textEl = row.querySelector('.msg-text');
+  if (!textEl || row.querySelector('.msg-edit-box')) return;
+  const textarea = document.createElement('textarea');
+  textarea.className = 'msg-edit-box';
+  textarea.value = m.text || '';
+  const actions = document.createElement('div');
+  actions.className = 'msg-edit-actions';
+  const save = document.createElement('button'); save.className='btn primary'; save.type='button'; save.textContent='Save';
+  const cancel = document.createElement('button'); cancel.className='btn'; cancel.type='button'; cancel.textContent='Cancel';
+  save.addEventListener('click', () => saveEditedMessage(id, textarea, m));
+  cancel.addEventListener('click', () => { textarea.replaceWith(textEl); actions.remove(); });
+  textEl.replaceWith(textarea); actions.append(save, cancel);
+  textarea.insertAdjacentElement('afterend', actions);
+  textarea.focus(); textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+}
+
+function renderMessage(id, m, ts, grouped) {
   const row = document.createElement('div');
   row.className = 'msg-row' + (grouped ? ' grouped' : '');
   const isAdmin = m.role === 'admin';
-  const canDelete = profile && (profile.role === 'admin' || profile.uid === m.uid);
+  const canManage = profile && (profile.role === 'admin' || profile.uid === m.uid);
+  const canEdit = !!(m.text && canManage);
 
   if (grouped) {
     const gutter = document.createElement('div');
@@ -1397,45 +1449,46 @@ function renderMessage(id, m, ts, grouped) {
     row.appendChild(gutter);
   } else {
     const av = document.createElement('img');
-    av.className = 'avatar'; av.width = 38; av.height = 38; av.style.width='38px'; av.style.height='38px';
-    av.style.cursor = 'pointer';
-    renderAvatar(av, { uid: m.uid, username: m.username, photoBase64: m.photoBase64 });
+    av.className = 'avatar'; av.width = 38; av.height = 38; av.style.width='38px'; av.style.height='38px'; av.style.cursor='pointer';
+    renderAvatar(av, { uid:m.uid, username:m.username, photoBase64:m.photoBase64 });
     av.addEventListener('click', () => openProfile(m.uid));
     row.appendChild(av);
   }
 
   const body = document.createElement('div');
   body.className = 'msg-body';
-  body.innerHTML = `
-    ${!grouped ? `
-    <div class="msg-head">
-      <span class="msg-uname clickable ${isAdmin ? 'admin' : ''}">${escapeHtml(m.username)}${isAdmin ? ' ♛' : ''}</span>
-      <span class="msg-time">${ts.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-      ${canDelete ? `<button class="msg-del" data-id="${id}">Delete</button>` : ''}
-    </div>` : ''}
-    ${m.text ? `<div class="msg-text"></div>` : ''}
-    ${m.imageBase64 ? `<img class="msg-img" src="${m.imageBase64}" />` : ''}
-  `;
-  if (m.text) body.querySelector('.msg-text').textContent = m.text;
-  const unameEl = body.querySelector('.msg-uname');
-  if (unameEl) unameEl.addEventListener('click', () => openProfile(m.uid));
-  const delBtn = body.querySelector('.msg-del');
-  if (delBtn) delBtn.addEventListener('click', () => deleteMessage(id));
-  const imgEl = body.querySelector('.msg-img');
-  if (imgEl) imgEl.addEventListener('click', () => { $('lightbox-img').src = imgEl.src; $('lightbox').classList.add('open'); });
-
-  row.appendChild(body);
-
-  // Grouped rows have no header to hang a delete button off, so give
-  // them a floating one that only appears on row hover.
-  if (grouped && canDelete) {
-    const groupedDel = document.createElement('button');
-    groupedDel.className = 'msg-del grouped-del';
-    groupedDel.textContent = 'Delete';
-    groupedDel.addEventListener('click', () => deleteMessage(id));
-    row.appendChild(groupedDel);
+  if (!grouped) {
+    const head = document.createElement('div'); head.className='msg-head';
+    const uname = document.createElement('span'); uname.className='msg-uname clickable' + (isAdmin ? ' admin' : '');
+    uname.textContent = m.username + (isAdmin ? ' ♛' : ''); uname.addEventListener('click', () => openProfile(m.uid));
+    const time = document.createElement('span'); time.className='msg-time';
+    time.textContent = ts.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + (m.editedAt ? ' · edited' : '');
+    head.append(uname, time);
+    body.appendChild(head);
   }
 
+  if (m.text) {
+    const textEl = document.createElement('div'); textEl.className='msg-text'; textEl.appendChild(renderMentionText(m.text)); body.appendChild(textEl);
+  }
+  if (m.imageBase64) {
+    const img = document.createElement('img'); img.className='msg-img'; img.src=m.imageBase64;
+    img.addEventListener('click', () => { $('lightbox-img').src=img.src; $('lightbox').classList.add('open'); });
+    body.appendChild(img);
+  }
+
+  const actionBar = document.createElement('div'); actionBar.className='msg-actions';
+  addReactionPicker(id, m, row, actionBar);
+  if (canEdit) {
+    const edit = document.createElement('button'); edit.type='button'; edit.className='msg-action'; edit.textContent='Edit';
+    edit.addEventListener('click', () => beginEditMessage(id, m, row)); actionBar.appendChild(edit);
+  }
+  if (canManage) {
+    const del = document.createElement('button'); del.type='button'; del.className='msg-action'; del.textContent='Delete';
+    del.addEventListener('click', () => deleteMessage(id)); actionBar.appendChild(del);
+  }
+  body.appendChild(actionBar);
+  row.appendChild(body);
+  renderReactions(id, m, row);
   return row;
 }
 async function deleteMessage(id) {
@@ -1443,6 +1496,7 @@ async function deleteMessage(id) {
   if (!confirmed) return;
   deleteDoc(convoMessageDoc(id)).catch(() => toast("Couldn't delete that message."));
 }
+
 $('lightbox').addEventListener('click', () => $('lightbox').classList.remove('open'));
 
 function escapeHtml(s) {
@@ -1485,11 +1539,27 @@ function listenMembers() {
 }
 function renderMembers(list) {
   const now = Date.now();
-  list.sort((a,b) => (a.username||'').localeCompare(b.username||''));
-  $('member-count').textContent = `Members — ${list.length}`;
+  let visible = list.slice();
+  if (currentConvoType === 'dm' && currentDmId) {
+    const d = dmCache[currentDmId];
+    const ids = new Set((d && d.members) || []);
+    visible = visible.filter(u => ids.has(u.uid));
+    // Render a fallback for a member whose user document has not arrived yet.
+    if (d && Array.isArray(d.members)) {
+      d.members.forEach(uid => {
+        if (!visible.some(u => u.uid === uid)) {
+          visible.push({ uid, username: (d.memberNames && d.memberNames[uid]) || 'Member', role:'member', photoBase64:null });
+        }
+      });
+    }
+  }
+  visible.sort((a,b) => (a.username||'').localeCompare(b.username||''));
+  $('member-count').textContent = currentConvoType === 'dm' && currentDmId
+    ? `Members — ${visible.length}`
+    : `Members — ${visible.length}`;
   const wrap = $('member-list');
   wrap.innerHTML = '';
-  list.forEach(u => {
+  visible.forEach(u => {
     const lastSeen = u.lastSeen && u.lastSeen.toDate ? u.lastSeen.toDate().getTime() : 0;
     const online = (now - lastSeen) < 45000;
     const row = document.createElement('div');
@@ -1601,6 +1671,10 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('#member-context-menu')) closeMemberContextMenu();
 });
 document.addEventListener('scroll', closeMemberContextMenu, true);
+$('ctx-view-profile').addEventListener('click', () => {
+  if (ctxTargetUid) openProfile(ctxTargetUid);
+  closeMemberContextMenu();
+});
 $('ctx-create-dm').addEventListener('click', () => {
   if (ctxTargetUid) openOrCreateDm([ctxTargetUid]);
   closeMemberContextMenu();
@@ -1706,7 +1780,7 @@ $('group-settings-file-input').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   try {
-    const dataUrl = await resizeImage(file, 220, 0.85);
+    const dataUrl = await resizeAvatarImage(file);
     stagedGroupAvatar = dataUrl;
     $('group-settings-avatar').src = dataUrl;
   } catch (err) { toast(err.message); }
@@ -1725,14 +1799,21 @@ $('group-settings-save').addEventListener('click', async () => {
     stagedGroupAvatar = null;
     $('group-settings-backdrop').classList.remove('open');
   } catch (e) {
-    err.textContent = "Couldn't save changes."; err.style.display = 'block';
+    console.error('Settings save failed:', e);
+    err.textContent = e && e.code === 'permission-denied'
+      ? "Couldn't save changes. Your Firestore rules need the updated user-profile/timetable rule."
+      : "Couldn't save changes. Please try again.";
+    err.style.display = 'block';
   }
 });
 
 
 // ---------- composer ----------
 const msgInput = $('msg-input');
-msgInput.addEventListener('input', () => { msgInput.style.height = 'auto'; msgInput.style.height = Math.min(msgInput.scrollHeight, 140) + 'px'; });
+msgInput.addEventListener('input', () => { msgInput.style.height = 'auto'; msgInput.style.height = Math.min(msgInput.scrollHeight, 140) + 'px'; updateMentionPicker(); });
+msgInput.addEventListener('keyup', updateMentionPicker);
+msgInput.addEventListener('click', updateMentionPicker);
+msgInput.addEventListener('blur', () => setTimeout(closeMentionPicker, 120));
 msgInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
@@ -1759,10 +1840,65 @@ $('file-input').addEventListener('change', async (e) => {
 });
 $('img-preview-clear').addEventListener('click', () => { pendingImage = null; $('img-preview-wrap').style.display = 'none'; });
 
+function mentionCandidates() {
+  if (currentConvoType === 'dm' && currentDmId) {
+    const d = dmCache[currentDmId];
+    const ids = new Set((d && d.members) || []);
+    return Object.values(userCache).filter(u => ids.has(u.uid));
+  }
+  return Object.values(userCache);
+}
+function extractMentionUids(text) {
+  const out = new Set();
+  const users = mentionCandidates();
+  const lower = (text || '').toLowerCase();
+  users.forEach(u => {
+    const name = (u.username || '').trim();
+    if (!name || !/^[A-Za-z0-9_.-]+$/.test(name)) return;
+    const re = new RegExp('(^|\\s)@' + name.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&') + '(?=$|\\s|[.,!?])', 'i');
+    if (re.test(text || '') && lower.includes('@' + name.toLowerCase())) out.add(u.uid);
+  });
+  return [...out].slice(0, 20);
+}
+function closeMentionPicker() { $('mention-picker').classList.remove('open'); }
+function updateMentionPicker() {
+  const picker = $('mention-picker');
+  const value = msgInput.value;
+  const caret = msgInput.selectionStart ?? value.length;
+  const before = value.slice(0, caret);
+  const match = before.match(/(?:^|\s)@([A-Za-z0-9_.-]*)$/);
+  if (!match) { closeMentionPicker(); return; }
+  const q = (match[1] || '').toLowerCase();
+  const candidates = mentionCandidates().filter(u => (u.username || '').toLowerCase().startsWith(q)).slice(0, 8);
+  picker.innerHTML = '';
+  if (!candidates.length) { closeMentionPicker(); return; }
+  candidates.forEach(u => {
+    const opt = document.createElement('button'); opt.type='button'; opt.className='mention-option';
+    const av = document.createElement('img'); av.className='avatar'; av.width=24; av.height=24; av.style.width='24px'; av.style.height='24px'; renderAvatar(av,u);
+    const name = document.createElement('span'); name.className='mention-option-name'; name.textContent='@'+u.username;
+    opt.append(av,name);
+    opt.addEventListener('mousedown', e => e.preventDefault());
+    opt.addEventListener('click', () => {
+      const start = caret - match[1].length - 1;
+      const beforeText = value.slice(0, start);
+      const afterText = value.slice(caret);
+      msgInput.value = beforeText + '@' + u.username + ' ' + afterText;
+      const pos = (beforeText + '@' + u.username + ' ').length;
+      msgInput.focus(); msgInput.setSelectionRange(pos,pos); closeMentionPicker();
+    });
+    picker.appendChild(opt);
+  });
+  const r = msgInput.getBoundingClientRect();
+  picker.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 238)) + 'px';
+  picker.style.top = Math.max(8, r.top - Math.min(250, picker.scrollHeight || 200) - 8) + 'px';
+  picker.classList.add('open');
+}
+
 async function sendMessage() {
   const text = msgInput.value.trim();
   if (!text && !pendingImage) return;
   if (!profile) return;
+  const mentions = extractMentionUids(text);
   const payload = {
     uid: profile.uid,
     username: profile.username,
@@ -1770,6 +1906,7 @@ async function sendMessage() {
     photoBase64: profile.photoBase64 || null,
     text: text || null,
     imageBase64: pendingImage || null,
+    mentions,
     timestamp: serverTimestamp()
   };
   msgInput.value = ''; msgInput.style.height = 'auto';
@@ -1845,65 +1982,6 @@ $('tt-clear-btn').addEventListener('click', () => {
   renderTtGridTable();
 });
 
-// ---------- timetable image scan ----------
-function openApiKeyModal() {
-  $('apikey-input').value = localStorage.getItem(TT_KEY_STORAGE) || '';
-  $('apikey-err').style.display = 'none';
-  $('apikey-backdrop').classList.add('open');
-}
-$('tt-api-key-btn').addEventListener('click', () => openApiKeyModal());
-$('apikey-cancel').addEventListener('click', () => $('apikey-backdrop').classList.remove('open'));
-$('apikey-backdrop').addEventListener('click', (e) => { if (e.target.id === 'apikey-backdrop') $('apikey-backdrop').classList.remove('open'); });
-$('apikey-save').addEventListener('click', () => {
-  const val = $('apikey-input').value.trim();
-  if (!val) { $('apikey-err').textContent = 'Enter a key, or use "Clear saved key" to remove it.'; $('apikey-err').style.display = 'block'; return; }
-  localStorage.setItem(TT_KEY_STORAGE, val);
-  $('apikey-backdrop').classList.remove('open');
-  toast('API key saved to this browser.', 'info');
-});
-$('apikey-clear').addEventListener('click', () => {
-  localStorage.removeItem(TT_KEY_STORAGE);
-  $('apikey-input').value = '';
-  toast('API key cleared.', 'info');
-});
-
-async function handleTimetableImageFile(file) {
-  if (!file.type || !file.type.startsWith('image/')) { toast('That file doesn\'t look like an image.'); return; }
-  try {
-    const resized = await resizeImage(file, 1500, 0.85);
-    await parseTimetableImage(resized);
-  } catch (err) {
-    toast(err.message || "Couldn't read that image.");
-  }
-}
-$('tt-img-drop').addEventListener('click', () => $('tt-img-file').click());
-$('tt-img-drop').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('tt-img-file').click(); }
-});
-$('tt-img-file').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  e.target.value = '';
-  if (file) await handleTimetableImageFile(file);
-});
-['dragover'].forEach(evt => $('tt-img-drop').addEventListener(evt, (e) => { e.preventDefault(); $('tt-img-drop').classList.add('drag'); }));
-['dragleave', 'drop'].forEach(evt => $('tt-img-drop').addEventListener(evt, (e) => { e.preventDefault(); $('tt-img-drop').classList.remove('drag'); }));
-$('tt-img-drop').addEventListener('drop', async (e) => {
-  const file = e.dataTransfer.files && e.dataTransfer.files[0];
-  if (file) await handleTimetableImageFile(file);
-});
-document.addEventListener('paste', async (e) => {
-  const paneOpen = $('settings-backdrop').classList.contains('open') && $('pane-timetable').classList.contains('active');
-  if (!paneOpen) return;
-  const items = (e.clipboardData && e.clipboardData.items) || [];
-  for (const item of items) {
-    if (item.type && item.type.startsWith('image/')) {
-      const file = item.getAsFile();
-      if (file) { e.preventDefault(); await handleTimetableImageFile(file); }
-      break;
-    }
-  }
-});
-
 $('open-settings').addEventListener('click', () => {
   $('settings-username').value = profile.username;
   $('settings-bio').value = profile.bio || '';
@@ -1933,7 +2011,7 @@ $('settings-file-input').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   try {
-    const dataUrl = await resizeImage(file, 220, 0.85);
+    const dataUrl = await resizeAvatarImage(file);
     stagedAvatar = dataUrl;
     $('settings-avatar').src = dataUrl;
   } catch (err) { toast(err.message); }
