@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Yappathon — Chat v16</title>
+<title>Yappathon — Chat v19</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23FF7A33'/%3E%3Cpath d='M14 20C14 16.13 17.13 13 21 13H43C46.87 13 50 16.13 50 20V34C50 37.87 46.87 41 43 41H26L18 48V41H21C17.13 41 14 37.87 14 34V20Z' fill='white'/%3E%3Ccircle cx='23' cy='27' r='3' fill='%23FF7A33'/%3E%3Ccircle cx='32' cy='27' r='3' fill='%23FF7A33'/%3E%3Ccircle cx='41' cy='27' r='3' fill='%23FF7A33'/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -382,6 +382,21 @@
   [data-theme="lavender"] { --bg:#15121C;--bg-alt:#1E1928;--bg-elevated:#282238;--bg-input:#302944;--border:#403653;--text:#EEE9FA;--text-muted:#A69BB9;--accent:#B18CFF;--accent-hover:#C1A3FF;--accent-contrast:#15121C;--accent-soft:rgba(177,140,255,.15);--online:#62D89A;--danger:#FF6D83;--shadow:rgba(0,0,0,.5);--glow-a:rgba(177,140,255,.16);--glow-b:rgba(110,170,255,.07); }
   [data-theme="sunset"] { --bg:#1A1210;--bg-alt:#261916;--bg-elevated:#33211B;--bg-input:#3B2720;--border:#52362A;--text:#F8ECE5;--text-muted:#BDA49A;--accent:#FF9A4D;--accent-hover:#FFAD69;--accent-contrast:#1A1210;--accent-soft:rgba(255,154,77,.15);--online:#63D18A;--danger:#FF6971;--shadow:rgba(255,154,77,.16);--glow-a:rgba(255,154,77,.16);--glow-b:rgba(255,75,110,.07); }
   [data-theme="slate"] { --bg:#11151A;--bg-alt:#181D24;--bg-elevated:#202731;--bg-input:#262E39;--border:#343E4C;--text:#E9EDF2;--text-muted:#8D99A8;--accent:#A7B8CC;--accent-hover:#BAC8D8;--accent-contrast:#11151A;--accent-soft:rgba(167,184,204,.15);--online:#58CC8B;--danger:#F06A72;--shadow:rgba(0,0,0,.5);--glow-a:rgba(167,184,204,.12);--glow-b:rgba(90,130,180,.07); }
+  [data-theme="nova-special"] { --bg:#090612;--bg-alt:#120A1E;--bg-elevated:#1B0F2A;--bg-input:#24153A;--border:#4A2A67;--text:#F8F2FF;--text-muted:#B9A5D0;--accent:#D66BFF;--accent-hover:#E28AFF;--accent-contrast:#12071B;--accent-soft:rgba(214,107,255,.17);--online:#62E5B0;--danger:#FF5C88;--shadow:rgba(160,80,255,.22);--glow-a:rgba(214,107,255,.20);--glow-b:rgba(72,154,255,.12); }
+  .nova-flash { position:fixed; inset:0; z-index:9999; background:#fff; opacity:0; pointer-events:none; }
+  .nova-flash.active { animation:novaFlash .55s ease-out forwards; }
+  @keyframes novaFlash { 0%{opacity:0} 12%{opacity:1} 28%{opacity:.92} 100%{opacity:0} }
+  .changelog-backdrop { display:none; position:fixed; inset:0; z-index:900; background:rgba(0,0,0,.62); align-items:center; justify-content:center; padding:20px; }
+  .changelog-backdrop.open { display:flex; animation:fadeIn .18s ease both; }
+  .changelog-card { width:min(560px,calc(100vw - 32px)); max-height:min(720px,calc(100dvh - 32px)); overflow:auto; background:var(--bg-elevated); border:1px solid var(--border); border-radius:18px; box-shadow:0 25px 90px var(--shadow); padding:24px; animation:scaleIn .22s cubic-bezier(.22,1,.36,1) both; }
+  .changelog-card h2 { margin:0; font-size:20px; }
+  .changelog-sub { margin:5px 0 18px; color:var(--text-muted); font-size:12px; }
+  .changelog-list { display:grid; gap:9px; margin:0; padding:0; list-style:none; }
+  .changelog-list li { display:flex; gap:10px; align-items:flex-start; padding:10px 11px; background:var(--bg-input); border:1px solid var(--border); border-radius:11px; font-size:13px; line-height:1.4; }
+  .changelog-list li::before { content:'✓'; color:var(--accent); font-weight:800; }
+  .changelog-actions { display:flex; justify-content:flex-end; margin-top:20px; }
+  @media (prefers-reduced-motion: reduce) { .nova-flash.active { animation:none; opacity:0; } .changelog-backdrop.open,.changelog-card { animation:none; } }
+
   .app-dialog-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.58);align-items:center;justify-content:center;z-index:500;padding:20px;animation:fadeIn .16s ease both}.app-dialog-backdrop.open{display:flex}.app-dialog{width:min(420px,calc(100vw - 40px));background:var(--bg-elevated);border:1px solid var(--border);border-radius:16px;padding:22px;box-shadow:0 24px 70px var(--shadow);animation:scaleIn .2s cubic-bezier(.22,1,.36,1) both}.app-dialog h2{margin:0 0 8px;font-size:17px}.app-dialog p{margin:0;color:var(--text-muted);font-size:13.5px;line-height:1.5;white-space:pre-wrap}.app-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.app-dialog-actions .danger{color:var(--danger);border-color:var(--danger)}.ui-icon{width:16px;height:16px;flex:0 0 auto;display:block;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.icon-btn.icon-label{align-items:center;gap:7px;padding:7px 9px}.theme-btn-label{font-size:12px;font-weight:600}
   /* ---------- Responsive / scalable layout ---------- */
   #app { min-height:100dvh; }
@@ -573,7 +588,7 @@
           <div class="theme-opt" data-theme="yapp-light"><span class="dot" style="background:#E8590C"></span>Yapp Light</div>
           <div class="theme-opt" data-theme="midnight"><span class="dot" style="background:#7C8CFF"></span>Midnight</div>
           <div class="theme-opt" data-theme="forest"><span class="dot" style="background:#4FBE7B"></span>Forest</div>
-          <div class="theme-opt" data-theme="rose"><span class="dot" style="background:#FF6F9F"></span>Rose</div><div class="theme-opt" data-theme="ocean"><span class="dot" style="background:#39C6D8"></span>Ocean</div><div class="theme-opt" data-theme="lavender"><span class="dot" style="background:#B18CFF"></span>Lavender</div><div class="theme-opt" data-theme="sunset"><span class="dot" style="background:#FF9A4D"></span>Sunset</div><div class="theme-opt" data-theme="slate"><span class="dot" style="background:#A7B8CC"></span>Slate</div>
+          <div class="theme-opt" data-theme="rose"><span class="dot" style="background:#FF6F9F"></span>Rose</div><div class="theme-opt" data-theme="ocean"><span class="dot" style="background:#39C6D8"></span>Ocean</div><div class="theme-opt" data-theme="lavender"><span class="dot" style="background:#B18CFF"></span>Lavender</div><div class="theme-opt" data-theme="sunset"><span class="dot" style="background:#FF9A4D"></span>Sunset</div><div class="theme-opt" data-theme="slate"><span class="dot" style="background:#A7B8CC"></span>Slate</div><div class="theme-opt" data-theme="nova-special"><span class="dot" style="background:#D66BFF"></span>The Nova Special</div>
         </div>
       </div>
       <button class="icon-btn" id="mobile-members-toggle" style="display:none;" aria-label="Members"><svg class="ui-icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M16 5.5a3 3 0 0 1 0 5.8M18 13a5 5 0 0 1 3 4.5"/></svg></button>
@@ -599,6 +614,23 @@
     <div id="member-list"></div>
   </aside>
 </div>
+
+<!-- ===== Update changelog ===== -->
+<div class="changelog-backdrop" id="changelog-backdrop" role="dialog" aria-modal="true" aria-labelledby="changelog-title">
+  <div class="changelog-card">
+    <h2 id="changelog-title">What's new in Yappathon v19</h2>
+    <div class="changelog-sub">Update changelog</div>
+    <ul class="changelog-list">
+      <li>Added <strong>The Nova Special</strong> theme with its own purple-blue glow.</li>
+      <li>Activating Nova Special triggers a brief bright flash effect.</li>
+      <li>Added an in-app changelog that appears once whenever a new app version is opened.</li>
+      <li>Kept the responsive layout, DM hiding, reactions, editing, mentions, and other v18 features intact.</li>
+    </ul>
+    <div class="changelog-actions"><button class="btn primary" id="changelog-close">Got it</button></div>
+  </div>
+</div>
+
+<div class="nova-flash" id="nova-flash" aria-hidden="true"></div>
 
 <!-- ===== Settings modal ===== -->
 <div class="modal-backdrop" id="settings-backdrop">
@@ -2286,12 +2318,37 @@ document.addEventListener('click', (e) => {
 document.querySelectorAll('.theme-opt').forEach(opt => {
   opt.addEventListener('click', () => setTheme(opt.dataset.theme));
 });
+function triggerNovaFlash() {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const flash = $('nova-flash');
+  flash.classList.remove('active');
+  void flash.offsetWidth;
+  flash.classList.add('active');
+  setTimeout(() => flash.classList.remove('active'), 650);
+}
 function setTheme(t) {
+  const previous = document.body.getAttribute('data-theme');
   document.body.setAttribute('data-theme', t);
   localStorage.setItem('yapp-theme', t);
   $('theme-menu').classList.remove('open');
+  if (t === 'nova-special' && previous !== 'nova-special') triggerNovaFlash();
 }
 setTheme(localStorage.getItem('yapp-theme') || 'yapp-dark');
+
+// ---------- update changelog ----------
+const YAPPATHON_VERSION = '19';
+function showUpdateChangelog() {
+  const key = 'yappathon-changelog-seen-v' + YAPPATHON_VERSION;
+  if (localStorage.getItem(key)) return;
+  const backdrop = $('changelog-backdrop');
+  backdrop.classList.add('open');
+  $('changelog-close').focus();
+  $('changelog-close').addEventListener('click', () => {
+    localStorage.setItem(key, '1');
+    backdrop.classList.remove('open');
+  }, { once:true });
+}
+setTimeout(showUpdateChangelog, 450);
 
 // ---------- mobile toggles ----------
 $('mobile-sidebar-toggle').addEventListener('click', () => {
