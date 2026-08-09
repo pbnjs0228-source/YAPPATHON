@@ -2355,10 +2355,7 @@ $('open-settings').addEventListener('click', () => {
   document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'profile'));
   document.querySelectorAll('.settings-pane').forEach(p => p.classList.toggle('active', p.id === 'pane-profile'));
   const tt = profile.timetable;
-  ttGrid = (tt && Array.isArray(tt.grid)) ? PERIODS.map((_, ri) => {
-    const row = ttRow(tt.grid, ri);
-    return new Array(10).fill('').map((v, ci) => row[ci] || '');
-  }) : emptyTtGrid();
+  ttGrid = (tt && tt.grid) ? normalizeTtGrid(tt.grid) : emptyTtGrid();
   $('tt-enabled').checked = !!(tt && tt.enabled);
   $('tt-paste').value = '';
   $('tt-week-select').value = String(tt ? currentWeekIndexFor(tt, new Date()) : 0);
