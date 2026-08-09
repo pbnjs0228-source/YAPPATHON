@@ -540,7 +540,7 @@
     <div class="section-label">Channels <button id="add-channel-btn" title="Create channel">+</button></div>
     <ul class="channel-list" id="channel-list"></ul>
 
-    <div class="section-label dm-section" style="margin-top:6px;position:relative;">Direct Messages <button id="add-dm-btn" title="New direct message or hidden DMs">+</button><div class="hidden-dm-panel" id="hidden-dm-panel"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 6px 8px;"><div class="hidden-dm-title" style="padding:0;">Hidden DMs</div><button id="hidden-new-dm" class="btn" type="button" style="padding:4px 8px;font-size:11px;">New DM</button></div><div id="hidden-dm-list"></div></div></div>
+    <div class="section-label dm-section" style="margin-top:6px;position:relative;">Direct Messages <button id="add-dm-btn" title="New direct message">+</button></div>
     <ul class="channel-list dm-list" id="dm-list"></ul>
 
     <div class="section-label" style="margin-top:6px;">Games</div>
@@ -702,18 +702,30 @@
 <!-- ===== New DM modal ===== -->
 <div class="modal-backdrop" id="dm-backdrop">
   <div class="modal">
-    <h2>New message</h2>
-    <label for="dm-search">To</label>
-    <input type="text" id="dm-search" placeholder="Search members…" autocomplete="off" />
-    <div class="dm-picker-list" id="dm-picker-list"></div>
-    <div id="dm-group-name-wrap" style="display:none;">
-      <label for="dm-group-name">Group name <span style="font-weight:400; color:var(--text-muted);">(optional)</span></label>
-      <input type="text" id="dm-group-name" maxlength="60" placeholder="e.g. Group project" />
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <h2 style="margin:0;">New message</h2>
+      <button class="btn" id="dm-hidden-toggle" type="button" style="padding:6px 10px;font-size:12px;">Hidden DMs</button>
     </div>
-    <div class="modal-err" id="dm-err"></div>
-    <div class="modal-actions">
-      <button class="btn" id="dm-cancel">Cancel</button>
-      <button class="btn primary" id="dm-create" disabled>Start</button>
+    <div id="dm-new-panel">
+      <label for="dm-search">To</label>
+      <input type="text" id="dm-search" placeholder="Search members…" autocomplete="off" />
+      <div class="dm-picker-list" id="dm-picker-list"></div>
+      <div id="dm-group-name-wrap" style="display:none;">
+        <label for="dm-group-name">Group name <span style="font-weight:400; color:var(--text-muted);">(optional)</span></label>
+        <input type="text" id="dm-group-name" maxlength="60" placeholder="e.g. Group project" />
+      </div>
+      <div class="modal-err" id="dm-err"></div>
+      <div class="modal-actions">
+        <button class="btn" id="dm-cancel">Cancel</button>
+        <button class="btn primary" id="dm-create" disabled>Start</button>
+      </div>
+    </div>
+    <div id="dm-hidden-panel" style="display:none;margin-top:16px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">Hidden DMs</div>
+      <div id="hidden-dm-list"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+        <button class="btn" id="dm-hidden-back" type="button">Back to new message</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1261,7 +1273,7 @@ function renderHiddenDmList(list){
     const unhide=document.createElement('button'); unhide.type='button'; unhide.textContent='Show';
     unhide.addEventListener('click',async e=>{e.stopPropagation(); await setDmHidden(d.id,false);});
     row.append(img,name,unhide);
-    row.addEventListener('click',async()=>{await setDmHidden(d.id,false); switchDm(d.id); $('hidden-dm-panel').classList.remove('open');});
+    row.addEventListener('click',async()=>{await setDmHidden(d.id,false); switchDm(d.id); $('dm-hidden-panel').style.display='none'; $('dm-new-panel').style.display='block';});
     wrap.appendChild(row);
   });
 }
@@ -1928,6 +1940,7 @@ function isBlockedEitherWay(otherUid) {
 // ---------- new DM modal ----------
 let dmSelected = new Set();
 function openNewDmModal() {
+  $('dm-new-panel').style.display='block'; $('dm-hidden-panel').style.display='none';
   dmSelected = new Set();
   $('dm-search').value = '';
   $('dm-group-name').value = '';
@@ -1973,8 +1986,9 @@ function renderDmPickerList(filter) {
     wrap.appendChild(row);
   });
 }
-$('add-dm-btn').addEventListener('click', (e) => { e.stopPropagation(); $('hidden-dm-panel').classList.toggle('open'); renderHiddenDmList(Object.values(dmCache)); });
-$('hidden-new-dm').addEventListener('click', (e) => { e.stopPropagation(); $('hidden-dm-panel').classList.remove('open'); openNewDmModal(); });
+$('add-dm-btn').addEventListener('click', (e) => { e.stopPropagation(); openNewDmModal(); });
+$('dm-hidden-toggle').addEventListener('click', () => { $('dm-new-panel').style.display='none'; $('dm-hidden-panel').style.display='block'; renderHiddenDmList(Object.values(dmCache)); });
+$('dm-hidden-back').addEventListener('click', () => { $('dm-hidden-panel').style.display='none'; $('dm-new-panel').style.display='block'; });
 $('dm-search').addEventListener('input', () => renderDmPickerList($('dm-search').value));
 $('dm-cancel').addEventListener('click', () => $('dm-backdrop').classList.remove('open'));
 $('dm-create').addEventListener('click', async () => {
@@ -2268,7 +2282,6 @@ $('settings-save').addEventListener('click', async () => {
 $('theme-btn').addEventListener('click', () => $('theme-menu').classList.toggle('open'));
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.theme-picker')) $('theme-menu').classList.remove('open');
-  if (!e.target.closest('.dm-section')) $('hidden-dm-panel').classList.remove('open');
 });
 document.querySelectorAll('.theme-opt').forEach(opt => {
   opt.addEventListener('click', () => setTheme(opt.dataset.theme));
