@@ -219,6 +219,18 @@
   .avatar { border-radius:50%; object-fit:cover; background: var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0; }
   .crown { color: var(--accent); font-size:12px; }
 
+  .profile-badges { display:flex; flex-wrap:wrap; gap:6px; }
+  .profile-badges:empty { display:none; }
+  .profile-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px 4px 8px; border-radius:999px; font-size:11.5px; font-weight:600; background: var(--bg-input); border:1px solid var(--border); color: var(--text-muted); }
+  .profile-badge .b-icon { font-size:12px; line-height:1; }
+  .profile-badge .b-icon svg { width:13px; height:13px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; display:block; }
+  .profile-badge.tier-admin { background: color-mix(in srgb, var(--accent) 16%, var(--bg-input)); border-color: var(--accent); color: var(--accent); }
+  .profile-badge.tier-1 { }
+  .profile-badge.tier-2 { background: color-mix(in srgb, var(--accent) 8%, var(--bg-input)); }
+  .profile-badge.tier-3 { background: color-mix(in srgb, var(--accent) 12%, var(--bg-input)); color: var(--text); }
+  .profile-badge.tier-4 { background: color-mix(in srgb, var(--accent) 18%, var(--bg-input)); color: var(--text); border-color: var(--accent-hover); }
+  .profile-badge.tier-5 { background: var(--accent); color:#fff; border-color: var(--accent); }
+
   /* ---------- Main pane ---------- */
   .main { display:flex; flex-direction:column; min-width:0; min-height:0; position:relative; isolation:isolate; overflow:hidden; background:transparent; }
   .main::before, .main::after { content:""; position:absolute; inset:-28%; pointer-events:none; z-index:-1; border-radius:50%; filter:blur(70px); }
@@ -426,6 +438,7 @@
   .secret-card { display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--border); border-radius:12px; background:var(--bg-input); transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
   .secret-card.unlocked { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-soft), 0 8px 25px var(--accent-soft); }
   .secret-icon { width:38px; height:38px; border-radius:11px; display:grid; place-items:center; flex:0 0 auto; background:var(--bg-elevated); color:var(--text-muted); border:1px solid var(--border); font-size:18px; }
+  .secret-icon svg { width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .secret-card.unlocked .secret-icon { color:var(--accent); background:var(--accent-soft); }
   .secret-meta { min-width:0; flex:1; }
   .secret-name { font-weight:700; font-size:13px; }
@@ -435,6 +448,7 @@
   .achievement-pop { position:fixed; right:18px; top:18px; z-index:1200; width:min(360px,calc(100vw - 36px)); padding:13px 15px; border:1px solid var(--accent); border-radius:14px; background:color-mix(in srgb,var(--bg-elevated) 92%, transparent); box-shadow:0 18px 55px var(--shadow), 0 0 30px var(--accent-soft); display:flex; align-items:center; gap:11px; animation:achievementIn .42s cubic-bezier(.22,1,.36,1) both; backdrop-filter:blur(12px); }
   .achievement-pop.leaving { animation:achievementOut .35s ease forwards; }
   .achievement-pop .secret-icon { width:34px; height:34px; font-size:16px; }
+  .achievement-pop .secret-icon svg { width:18px; height:18px; }
   .achievement-kicker { font-size:9px; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); font-weight:800; }
   .achievement-title { font-size:14px; font-weight:800; margin-top:2px; }
   .achievement-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
@@ -691,7 +705,7 @@
       <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#D66BFF;font-weight:800;">NOVA // OLD FRIEND</div>
       <h2>An old friend</h2>
       <p>You found the Nova secret. The app has switched into the hidden Nova interface.</p>
-      <a class="secret-nova-link" href="https://github.com/entity387/Secret-NOVA" target="_blank" rel="noopener noreferrer">Open Secret-NOVA on GitHub</a>
+      <a class="secret-nova-link" href="https://secret-nova.vercel.app/" target="_blank" rel="noopener noreferrer">Open NOVA</a>
       <div style="margin-top:20px;"><button class="btn" id="secret-nova-back">Return to Yappathon</button></div>
     </div>
   </div>
@@ -714,6 +728,8 @@
       <div class="settings-content">
 
         <div class="settings-pane active" id="pane-profile">
+          <div class="settings-section-title">Badges</div>
+          <div class="profile-badges" id="settings-badges" style="margin:6px 0 16px;"></div>
           <div class="settings-section-title">Avatar</div>
           <div class="modal-avatar-row" style="margin-top:6px;">
             <img class="avatar" id="settings-avatar" style="width:60px;height:60px;" />
@@ -783,6 +799,7 @@
       </div>
     </div>
     <p class="profile-bio" id="profile-bio"></p>
+    <div class="profile-badges" id="profile-badges"></div>
     <div class="modal-actions profile-actions">
       <button class="btn" id="profile-close">Close</button>
       <button class="btn primary" id="profile-admin-toggle" style="display:none;"></button>
@@ -1963,6 +1980,7 @@ function openProfile(uid) {
   $('profile-name').innerHTML = escapeHtml(u.username) + (u.role === 'admin' ? ' <span class="crown">♛</span>' : '');
   $('profile-role').textContent = u.role === 'admin' ? 'Admin' : 'Member';
   $('profile-bio').textContent = u.bio || '';
+  $('profile-badges').innerHTML = badgesHtmlForUser(u, currentUser && u.uid === currentUser.uid);
   renderAvatar($('profile-avatar'), u);
   const cls = computeCurrentClass(u.timetable, new Date());
   const clsEl = $('profile-class');
@@ -2347,6 +2365,7 @@ $('tt-clear-btn').addEventListener('click', () => {
 $('open-settings').addEventListener('click', () => {
   $('settings-username').value = profile.username;
   $('settings-bio').value = profile.bio || '';
+  renderMeBadges();
   $('avatar-upload-status').classList.remove('error');
   $('avatar-upload-status').textContent = 'PNG/JPG/WebP, max 500 KB after compression.';
   stagedAvatar = null;
@@ -2449,32 +2468,60 @@ function setTheme(t) {
 setTheme(localStorage.getItem('yapp-theme') || 'yapp-dark');
 
 // ---------- secrets / achievements ----------
+const SECRET_ICONS = {
+  'gamer': '<path d="M6 9h12a4 4 0 0 1 4 4.8l-.6 2.4a2 2 0 0 1-3.6.6L16 14H8l-1.8 2.8a2 2 0 0 1-3.6-.6L2 13.8A4 4 0 0 1 6 9Z"/><path d="M7.5 11.5v3M6 13h3M15.5 12.5h.01M17.5 14h.01"/>',
+  'old-friend': '<path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><path d="m6.5 6.5 2 2M15.5 15.5l2 2M6.5 17.5l2-2M15.5 8.5l2-2"/>',
+  'self-obsessed': '<rect x="6" y="3" width="12" height="18" rx="6"/><path d="M12 3v18" stroke-dasharray="1.5 3"/>',
+  'stick-bugged': '<rect x="8" y="7" width="8" height="10" rx="4"/><path d="M9 9 5.5 6M15 9l3.5-3M9 15l-3.5 3M15 15l3.5 3M8 12H4M16 12h4M12 7V4"/>',
+  'impatient': '<circle cx="12" cy="13" r="7"/><path d="M12 13V9M9.5 3h5M12 3v2"/>',
+  'logo-mash': '<path d="M4 12a8 8 0 0 1 14-5.3"/><path d="M20 12a8 8 0 0 1-14 5.3"/><path d="M17 3.7V7h-3.3M7 20.3V17h3.3"/>',
+  'chromatic': '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor" stroke="none"/>',
+  'chant': '<path d="M4 5h16v10H9l-4 4v-4H4Z"/><path d="M8 9h8M8 12h5"/>',
+  'shrinking-violet': '<path d="M9 4v4H5M15 4v4h4M9 20v-4H5M15 20v-4h4"/>',
+  'ghost': '<path d="M6 10a6 6 0 0 1 12 0v9l-2.5-2-2 2-1.5-2-1.5 2-2-2L6 19Z"/><circle cx="9.5" cy="10.5" r=".9" fill="currentColor" stroke="none"/><circle cx="14.5" cy="10.5" r=".9" fill="currentColor" stroke="none"/>',
+  'summit': '<path d="m4 19 6-10 4 6 2-3 4 7Z"/><path d="m14 9 1.5-2.5L19 12"/>',
+  'window-shopper': '<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 10h16M12 5v14"/>',
+  'second-thoughts': '<path d="m13.5 4.5 4 4-9 9H4.5v-4Z"/><path d="M3 14.5a6 6 0 0 1 6-9h2"/>',
+  'no-right-answers': '<path d="M6 3v14l4-4 3 6 2-1-3-6h5Z"/>',
+  'mirror-mirror': '<rect x="6" y="3" width="12" height="18" rx="6"/><circle cx="12" cy="12" r="2.6"/>',
+  'watched-pot': '<path d="M7 3h10M7 21h10M8 3c0 4.5 8 4.5 8 9s-8 4.5-8 9M16 3c0 4.5-8 4.5-8 9s8 4.5 8 9"/>',
+  'backing-out': '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m14 9-3 3 3 3M11 12h6"/>',
+  'groundhog-day': '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M8.5 14.5a3 3 0 1 1 .8 2.6M9.3 17h-1v-1"/>',
+  'countdown': '<path d="M12 3c3 2 4 6 4 9 0 2-1 4-4 6-3-2-4-4-4-6 0-3 1-7 4-9Z"/><path d="m9.5 15-2 4M14.5 15l2 4M10.3 9h3.4"/>',
+  'night-owl': '<path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z"/>',
+  'tab-flipper': '<path d="M7 8h10l-3-3"/><path d="M17 16H7l3 3"/>',
+  'doorbell': '<path d="M12 4a5 5 0 0 0-5 5c0 5-2 6-2 6h14s-2-1-2-6a5 5 0 0 0-5-5Z"/><path d="M10 19a2 2 0 0 0 4 0"/>',
+  'triple-threat': '<circle cx="12" cy="6.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="7.5" cy="15" r="1.4" fill="currentColor" stroke="none"/><circle cx="16.5" cy="15" r="1.4" fill="currentColor" stroke="none"/><path d="M12 6.5 7.5 15M12 6.5l4.5 8.5M7.5 15h9"/>',
+  'old-school': '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/>',
+  'full-circle': '<path d="M12 4a8 8 0 1 1-8 8"/><path d="M4 8v4h4"/>'
+};
+function secretIconSvg(id){ return `<svg viewBox="0 0 24 24">${SECRET_ICONS[id] || ''}</svg>`; }
 const SECRET_DEFS = [
-  { id:'gamer', name:'Gamer', icon:'⌘', desc:'Enter the Konami code. Nova achievement unlocked.' },
-  { id:'old-friend', name:'An old friend', icon:'✦', desc:'Type nova to uncover the hidden Nova interface.' },
-  { id:'self-obsessed', name:'Self Obsessed', icon:'◉', desc:'Spam your profile picture 10 times.' },
-  { id:'stick-bugged', name:'Stick BUGged', icon:'⚠', desc:'Encounter an application error.' },
-  { id:'impatient', name:'Impatient', icon:'»', desc:'Press Multiplayer Games 15 times.' },
-  { id:'logo-mash', name:'Déjà Vu', icon:'🔁', desc:'Some things reward repetition.', local:true },
-  { id:'chromatic', name:'Chromatic', icon:'◐', desc:'The way you open something can matter more than what you open.', local:true },
-  { id:'chant', name:'The Chant', icon:'🗣', desc:'Words have power, if you say the right one enough times.', local:true },
-  { id:'shrinking-violet', name:'Shrinking Violet', icon:'🔬', desc:'Not everything fits in a small space. See what happens if you try.', local:true },
-  { id:'ghost', name:'Ghost', icon:'👻', desc:'Sometimes it helps to just... leave for a while.', local:true },
-  { id:'summit', name:'Summit', icon:'⛰', desc:'Some people just keep going up.', local:true },
-  { id:'window-shopper', name:'Window Shopper', icon:'🪟', desc:'Looking is free. Changing your mind is too.', local:true },
-  { id:'second-thoughts', name:'Second Thoughts', icon:'✏', desc:'Write something. Then don\'t.', local:true },
-  { id:'no-right-answers', name:'No Right Answers', icon:'🖱', desc:'The other button exists for a reason.', local:true },
-  { id:'mirror-mirror', name:'Mirror Mirror', icon:'🪞', desc:'Look at yourself. Really look.', local:true },
-  { id:'watched-pot', name:'Watched Pot', icon:'⏳', desc:'Patience is a virtue, apparently.', local:true },
-  { id:'backing-out', name:'Backing Out', icon:'⎋', desc:'When in doubt, back out. Repeatedly.', local:true },
-  { id:'groundhog-day', name:'Groundhog Day', icon:'📅', desc:'History repeats itself if you make it.', local:true },
-  { id:'countdown', name:'Countdown', icon:'🚀', desc:'Some sequences only ever go one way.', local:true },
-  { id:'night-owl', name:'Night Owl', icon:'🦉', desc:'Some secrets only come out after dark.', local:true },
-  { id:'tab-flipper', name:'Tab Flipper', icon:'🔀', desc:'Indecision, rewarded.', local:true },
-  { id:'doorbell', name:'Doorbell', icon:'🔔', desc:'Knock enough times and someone might answer. Or not.', local:true },
-  { id:'triple-threat', name:'Triple Threat', icon:'✹', desc:'Once is an accident. Twice is a coincidence. Three times is...', local:true },
-  { id:'old-school', name:'Old School', icon:'⌨', desc:'Some developers never really leave the terminal behind.', local:true },
-  { id:'full-circle', name:'Full Circle', icon:'⭕', desc:'Sometimes the fastest way in is also the fastest way out.', local:true }
+  { id:'gamer', name:'Gamer', desc:'Enter the Konami code. Nova achievement unlocked.' },
+  { id:'old-friend', name:'An old friend', desc:'Type nova to uncover the hidden Nova interface.' },
+  { id:'self-obsessed', name:'Self Obsessed', desc:'Spam your profile picture 10 times.' },
+  { id:'stick-bugged', name:'Stick BUGged', desc:'Encounter an application error.' },
+  { id:'impatient', name:'Impatient', desc:'Press Multiplayer Games 15 times.' },
+  { id:'logo-mash', name:'Déjà Vu', desc:'Some things reward repetition.', local:true },
+  { id:'chromatic', name:'Chromatic', desc:'The way you open something can matter more than what you open.', local:true },
+  { id:'chant', name:'The Chant', desc:'Words have power, if you say the right one enough times.', local:true },
+  { id:'shrinking-violet', name:'Shrinking Violet', desc:'Not everything fits in a small space. See what happens if you try.', local:true },
+  { id:'ghost', name:'Ghost', desc:'Sometimes it helps to just... leave for a while.', local:true },
+  { id:'summit', name:'Summit', desc:'Some people just keep going up.', local:true },
+  { id:'window-shopper', name:'Window Shopper', desc:'Looking is free. Changing your mind is too.', local:true },
+  { id:'second-thoughts', name:'Second Thoughts', desc:'Write something. Then don\'t.', local:true },
+  { id:'no-right-answers', name:'No Right Answers', desc:'The other button exists for a reason.', local:true },
+  { id:'mirror-mirror', name:'Mirror Mirror', desc:'Look at yourself. Really look.', local:true },
+  { id:'watched-pot', name:'Watched Pot', desc:'Patience is a virtue, apparently.', local:true },
+  { id:'backing-out', name:'Backing Out', desc:'When in doubt, back out. Repeatedly.', local:true },
+  { id:'groundhog-day', name:'Groundhog Day', desc:'History repeats itself if you make it.', local:true },
+  { id:'countdown', name:'Countdown', desc:'Some sequences only ever go one way.', local:true },
+  { id:'night-owl', name:'Night Owl', desc:'Some secrets only come out after dark.', local:true },
+  { id:'tab-flipper', name:'Tab Flipper', desc:'Indecision, rewarded.', local:true },
+  { id:'doorbell', name:'Doorbell', desc:'Knock enough times and someone might answer. Or not.', local:true },
+  { id:'triple-threat', name:'Triple Threat', desc:'Once is an accident. Twice is a coincidence. Three times is...', local:true },
+  { id:'old-school', name:'Old School', desc:'Some developers never really leave the terminal behind.', local:true },
+  { id:'full-circle', name:'Full Circle', desc:'Sometimes the fastest way in is also the fastest way out.', local:true }
 ];
 let unlockedSecrets = new Set(JSON.parse(localStorage.getItem('yappathon-secrets') || '[]'));
 function saveSecrets(){ localStorage.setItem('yappathon-secrets', JSON.stringify([...unlockedSecrets])); }
@@ -2484,6 +2531,55 @@ async function syncSecretToFirestore(id){
     await updateDoc(doc(db, 'users', currentUser.uid), { [`secrets.${id}`]: true });
   } catch(e) { console.warn('Secret sync failed:', e); }
 }
+
+// ---------- profile badges ----------
+// Secret count badges. Only your own device knows about locally-unlocked
+// secrets (they're never synced), so other members' badges are based only
+// on whatever secrets they've synced to their profile — your own badge, on
+// your own screen, reflects everything you personally have found.
+const BADGE_ICONS = {
+  'admin': '<path d="M12 3.2 19 6v6c0 5-3 8.2-7 9.8-4-1.6-7-4.8-7-9.8V6Z"/><path d="m9.5 12 1.8 1.8L15 10"/>',
+  'finder': '<circle cx="10.5" cy="10.5" r="6"/><path d="m20 20-5.4-5.4"/>',
+  'hunter': '<path d="M9 5h2v4H9zM13 5h2v4h-2z"/><circle cx="8" cy="15" r="3"/><circle cx="16" cy="15" r="3"/><path d="M11 15h2"/>',
+  'seeker': '<circle cx="8.5" cy="8.5" r="4"/><path d="M11.3 11.3 20 20M15.5 15.5l2 2M17.5 13.5l2 2"/>',
+  'master': '<path d="M7 4h10v4a5 5 0 0 1-10 0Z"/><path d="M7 5H4v2a4 4 0 0 0 4 4M17 5h3v2a4 4 0 0 1-4 4"/><path d="M12 13v3M9 20h6M10 17h4v3h-4Z"/>',
+  'sage': '<path d="M12 3v4M12 17v4M4 12h4M16 12h4"/><path d="m7 7 2 2M17 7l-2 2M7 17l2-2M17 17l-2-2"/>',
+  'completionist': '<path d="m4 7 4 4 4-7 4 7 4-4-2 12H6L4 7Z"/><path d="M6 21h12"/>'
+};
+function badgeIconSvg(key){ return `<svg viewBox="0 0 24 24">${BADGE_ICONS[key] || ''}</svg>`; }
+const SECRET_BADGE_TIERS = [
+  { min:1,  tier:1, icon:'finder',  label:'Secret Finder' },
+  { min:5,  tier:2, icon:'hunter',  label:'Secret Hunter' },
+  { min:10, tier:3, icon:'seeker',  label:'Secret Seeker' },
+  { min:15, tier:4, icon:'master',  label:'Secret Master' },
+  { min:20, tier:5, icon:'sage',    label:'Secret Sage' },
+  { min:SECRET_DEFS.length, tier:5, icon:'completionist', label:'Completionist' }
+];
+function highestSecretBadge(count){
+  let best = null;
+  for(const t of SECRET_BADGE_TIERS){ if(count >= t.min) best = t; }
+  return best;
+}
+function badgePillHtml(iconKey, label, extraClass){
+  return `<span class="profile-badge ${extraClass||''}"><span class="b-icon">${badgeIconSvg(iconKey)}</span>${escapeHtml(label)}</span>`;
+}
+function badgesHtmlForUser(u, isSelf){
+  if(!u) return '';
+  let html = '';
+  if(u.role === 'admin') html += badgePillHtml('admin', 'Admin', 'tier-admin');
+  const count = isSelf
+    ? unlockedSecrets.size
+    : (u.secrets && typeof u.secrets === 'object' ? Object.values(u.secrets).filter(Boolean).length : 0);
+  const tier = highestSecretBadge(count);
+  if(tier) html += badgePillHtml(tier.icon, tier.label + (count>=SECRET_DEFS.length ? '' : ` (${count})`), 'tier-'+tier.tier);
+  return html;
+}
+function renderMeBadges(){
+  if(!profile) return;
+  const settingsEl = $('settings-badges');
+  if(settingsEl) settingsEl.innerHTML = badgesHtmlForUser(profile, true);
+}
+
 function renderSecrets(){
   const wrap = $('secrets-list');
   if(!wrap) return;
@@ -2492,7 +2588,7 @@ function renderSecrets(){
     const unlocked = unlockedSecrets.has(s.id);
     const card=document.createElement('div');
     card.className='secret-card'+(unlocked?' unlocked':'');
-    card.innerHTML=`<div class="secret-icon">${s.icon}</div><div class="secret-meta"><div class="secret-name">${escapeHtml(s.name)}</div><div class="secret-desc">${escapeHtml(s.desc)}</div></div><div class="secret-status">${unlocked?'Unlocked':'Locked'}</div>`;
+    card.innerHTML=`<div class="secret-icon">${secretIconSvg(s.id)}</div><div class="secret-meta"><div class="secret-name">${escapeHtml(s.name)}</div><div class="secret-desc">${escapeHtml(s.desc)}</div></div><div class="secret-status">${unlocked?'Unlocked':'Locked'}</div>`;
     wrap.appendChild(card);
   });
 }
@@ -2500,14 +2596,14 @@ function unlockSecret(id){
   if(unlockedSecrets.has(id)) return false;
   const s=SECRET_DEFS.find(x=>x.id===id);
   if(!s) return false;
-  unlockedSecrets.add(id); saveSecrets(); renderSecrets(); showAchievementPopup(s);
+  unlockedSecrets.add(id); saveSecrets(); renderSecrets(); showAchievementPopup(s); renderMeBadges();
   if(!s.local) syncSecretToFirestore(id);
   return true;
 }
 function showAchievementPopup(s){
   const old=document.querySelector('.achievement-pop'); if(old) old.remove();
   const el=document.createElement('div'); el.className='achievement-pop';
-  el.innerHTML=`<div class="secret-icon">${s.icon}</div><div><div class="achievement-kicker">Nova achievement unlocked</div><div class="achievement-title">${escapeHtml(s.name)}</div><div class="achievement-sub">${escapeHtml(s.desc)}</div></div>`;
+  el.innerHTML=`<div class="secret-icon">${secretIconSvg(s.id)}</div><div><div class="achievement-kicker">Nova achievement unlocked</div><div class="achievement-title">${escapeHtml(s.name)}</div><div class="achievement-sub">${escapeHtml(s.desc)}</div></div>`;
   document.body.appendChild(el);
   setTimeout(()=>{el.classList.add('leaving'); setTimeout(()=>el.remove(),360);},5200);
 }
@@ -2543,7 +2639,7 @@ document.addEventListener('keydown',e=>{
   if(novaBuffer==='nova'){
     novaBuffer='';
     unlockSecret('old-friend');
-    setTimeout(()=>{ window.location.href='https://github.com/entity387/Secret-NOVA'; }, 1200);
+    setTimeout(()=>{ window.location.href='https://secret-nova.vercel.app/'; }, 1200);
   }
 });
 
@@ -2790,6 +2886,7 @@ window.addEventListener('unhandledrejection',secretError);
 })();
 
 renderSecrets();
+renderMeBadges();
 
 // ---------- update changelog ----------
 const YAPPATHON_VERSION = '0.8';
