@@ -2408,14 +2408,6 @@ $('settings-save').addEventListener('click', async () => {
     if (updates.photoBase64 && updates.photoBase64.length > 700000) {
       throw new Error('The compressed avatar is still too large. Please choose another image.');
     }
-    console.log('DEBUG uid:', currentUser.uid);
-    console.log('DEBUG update keys:', Object.keys(updates));
-    console.log('DEBUG update payload:', JSON.stringify({
-      username: updates.username,
-      bio: updates.bio,
-      photoBase64_length: updates.photoBase64 ? updates.photoBase64.length : null,
-      timetable: updates.timetable
-    }, null, 2));
     await updateDoc(doc(db, 'users', currentUser.uid), updates);
     stagedAvatar = null;
     $('avatar-upload-status').classList.remove('error');
@@ -2462,7 +2454,27 @@ const SECRET_DEFS = [
   { id:'old-friend', name:'An old friend', icon:'✦', desc:'Type nova to uncover the hidden Nova interface.' },
   { id:'self-obsessed', name:'Self Obsessed', icon:'◉', desc:'Spam your profile picture 10 times.' },
   { id:'stick-bugged', name:'Stick BUGged', icon:'⚠', desc:'Encounter an application error.' },
-  { id:'impatient', name:'Impatient', icon:'»', desc:'Press Multiplayer Games 15 times.' }
+  { id:'impatient', name:'Impatient', icon:'»', desc:'Press Multiplayer Games 15 times.' },
+  { id:'logo-mash', name:'Déjà Vu', icon:'🔁', desc:'Some things reward repetition.', local:true },
+  { id:'chromatic', name:'Chromatic', icon:'◐', desc:'The way you open something can matter more than what you open.', local:true },
+  { id:'chant', name:'The Chant', icon:'🗣', desc:'Words have power, if you say the right one enough times.', local:true },
+  { id:'shrinking-violet', name:'Shrinking Violet', icon:'🔬', desc:'Not everything fits in a small space. See what happens if you try.', local:true },
+  { id:'ghost', name:'Ghost', icon:'👻', desc:'Sometimes it helps to just... leave for a while.', local:true },
+  { id:'summit', name:'Summit', icon:'⛰', desc:'Some people just keep going up.', local:true },
+  { id:'window-shopper', name:'Window Shopper', icon:'🪟', desc:'Looking is free. Changing your mind is too.', local:true },
+  { id:'second-thoughts', name:'Second Thoughts', icon:'✏', desc:'Write something. Then don\'t.', local:true },
+  { id:'no-right-answers', name:'No Right Answers', icon:'🖱', desc:'The other button exists for a reason.', local:true },
+  { id:'mirror-mirror', name:'Mirror Mirror', icon:'🪞', desc:'Look at yourself. Really look.', local:true },
+  { id:'watched-pot', name:'Watched Pot', icon:'⏳', desc:'Patience is a virtue, apparently.', local:true },
+  { id:'backing-out', name:'Backing Out', icon:'⎋', desc:'When in doubt, back out. Repeatedly.', local:true },
+  { id:'groundhog-day', name:'Groundhog Day', icon:'📅', desc:'History repeats itself if you make it.', local:true },
+  { id:'countdown', name:'Countdown', icon:'🚀', desc:'Some sequences only ever go one way.', local:true },
+  { id:'night-owl', name:'Night Owl', icon:'🦉', desc:'Some secrets only come out after dark.', local:true },
+  { id:'tab-flipper', name:'Tab Flipper', icon:'🔀', desc:'Indecision, rewarded.', local:true },
+  { id:'doorbell', name:'Doorbell', icon:'🔔', desc:'Knock enough times and someone might answer. Or not.', local:true },
+  { id:'triple-threat', name:'Triple Threat', icon:'✹', desc:'Once is an accident. Twice is a coincidence. Three times is...', local:true },
+  { id:'old-school', name:'Old School', icon:'⌨', desc:'Some developers never really leave the terminal behind.', local:true },
+  { id:'full-circle', name:'Full Circle', icon:'⭕', desc:'Sometimes the fastest way in is also the fastest way out.', local:true }
 ];
 let unlockedSecrets = new Set(JSON.parse(localStorage.getItem('yappathon-secrets') || '[]'));
 function saveSecrets(){ localStorage.setItem('yappathon-secrets', JSON.stringify([...unlockedSecrets])); }
@@ -2488,7 +2500,9 @@ function unlockSecret(id){
   if(unlockedSecrets.has(id)) return false;
   const s=SECRET_DEFS.find(x=>x.id===id);
   if(!s) return false;
-  unlockedSecrets.add(id); saveSecrets(); renderSecrets(); showAchievementPopup(s); syncSecretToFirestore(id); return true;
+  unlockedSecrets.add(id); saveSecrets(); renderSecrets(); showAchievementPopup(s);
+  if(!s.local) syncSecretToFirestore(id);
+  return true;
 }
 function showAchievementPopup(s){
   const old=document.querySelector('.achievement-pop'); if(old) old.remove();
@@ -2569,6 +2583,211 @@ function secretError(){ if(errorSecretFired) return; errorSecretFired=true; unlo
 window.__yappathonUnlockError = secretError;
 window.addEventListener('error',secretError);
 window.addEventListener('unhandledrejection',secretError);
+
+(function(){
+  let a=0,at=null;
+  const logo=document.querySelector('.logo-word');
+  if(logo) logo.addEventListener('click',()=>{
+    a++; clearTimeout(at); at=setTimeout(()=>a=0,3000);
+    if(a>=7){ a=0; unlockSecret('logo-mash'); }
+  });
+})();
+
+(function(){
+  let a=0,at=null;
+  const btn=$('theme-btn');
+  if(btn) btn.addEventListener('click',e=>{
+    if(!e.shiftKey){ a=0; return; }
+    a++; clearTimeout(at); at=setTimeout(()=>a=0,4000);
+    if(a>=5){ a=0; unlockSecret('chromatic'); }
+  });
+})();
+
+(function(){
+  let buf='',bt=null;
+  document.addEventListener('keydown',e=>{
+    if(e.ctrlKey||e.altKey||e.metaKey||typeof e.key!=='string'||e.key.length!==1) return;
+    buf=(buf+e.key.toLowerCase()).slice(-9);
+    clearTimeout(bt); bt=setTimeout(()=>buf='',2500);
+    if(buf==='yapyapyap'){ buf=''; unlockSecret('chant'); }
+  });
+})();
+
+(function(){
+  let small=false;
+  window.addEventListener('resize',()=>{
+    const w=window.innerWidth;
+    if(w<=400) small=true;
+    else if(w>=700 && small){ small=false; unlockSecret('shrinking-violet'); }
+  });
+})();
+
+(function(){
+  let hiddenAt=null;
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){ hiddenAt=Date.now(); }
+    else if(hiddenAt && Date.now()-hiddenAt>=60000){ unlockSecret('ghost'); hiddenAt=null; }
+    else { hiddenAt=null; }
+  });
+})();
+
+(function(){
+  let a=0,at=null,wasTop=true;
+  const el=$('messages');
+  if(el) el.addEventListener('scroll',()=>{
+    const atTop=el.scrollTop<=0;
+    if(atTop && !wasTop){
+      a++; clearTimeout(at); at=setTimeout(()=>a=0,15000);
+      if(a>=5){ a=0; unlockSecret('summit'); }
+    }
+    wasTop=atTop;
+  });
+})();
+
+(function(){
+  let a=0;
+  const backdrop=$('settings-backdrop');
+  const cancelBtn=$('settings-cancel');
+  const closeX=$('settings-close-x');
+  const saveBtn=$('settings-save');
+  const bump=()=>{ a++; if(a>=5){ a=0; unlockSecret('window-shopper'); } };
+  if(cancelBtn) cancelBtn.addEventListener('click',bump);
+  if(closeX) closeX.addEventListener('click',bump);
+  if(saveBtn) saveBtn.addEventListener('click',()=>{ a=0; });
+})();
+
+(function(){
+  let a=0, wasLong=false;
+  const bio=$('settings-bio');
+  if(bio) bio.addEventListener('input',()=>{
+    const len=bio.value.length;
+    if(len>=10) wasLong=true;
+    else if(len===0 && wasLong){ wasLong=false; a++; if(a>=3){ a=0; unlockSecret('second-thoughts'); } }
+  });
+})();
+
+(function(){
+  let a=0,at=null;
+  document.addEventListener('contextmenu',()=>{
+    a++; clearTimeout(at); at=setTimeout(()=>a=0,5000);
+    if(a>=3){ a=0; unlockSecret('no-right-answers'); }
+  });
+})();
+
+(function(){
+  const av=$('me-avatar');
+  if(av) av.addEventListener('dblclick',()=>unlockSecret('mirror-mirror'));
+})();
+
+(function(){
+  let hoverTimer=null;
+  const btn=$('theme-btn');
+  if(btn){
+    btn.addEventListener('mouseenter',()=>{ hoverTimer=setTimeout(()=>unlockSecret('watched-pot'),10000); });
+    btn.addEventListener('mouseleave',()=>{ clearTimeout(hoverTimer); });
+  }
+})();
+
+(function(){
+  let a=0,at=null;
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){
+      a++; clearTimeout(at); at=setTimeout(()=>a=0,10000);
+      if(a>=8){ a=0; unlockSecret('backing-out'); }
+    }
+  });
+})();
+
+(function(){
+  let a=0,at=null;
+  document.addEventListener('click',e=>{
+    if(e.target.closest && e.target.closest('.day-divider')){
+      a++; clearTimeout(at); at=setTimeout(()=>a=0,10000);
+      if(a>=5){ a=0; unlockSecret('groundhog-day'); }
+    }
+  });
+})();
+
+(function(){
+  let buf='',bt=null;
+  document.addEventListener('keydown',e=>{
+    if(e.ctrlKey||e.altKey||e.metaKey||typeof e.key!=='string'||e.key.length!==1) return;
+    buf=(buf+e.key).slice(-5);
+    clearTimeout(bt); bt=setTimeout(()=>buf='',2000);
+    if(buf==='54321'){ buf=''; unlockSecret('countdown'); }
+  });
+})();
+
+(function(){
+  if(new Date().getHours()===0) unlockSecret('night-owl');
+})();
+
+(function(){
+  let a=0,at=null,last=null;
+  document.querySelectorAll('.settings-tab-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const tab=btn.getAttribute('data-tab');
+      if((tab==='timetable'&&last==='secrets')||(tab==='secrets'&&last==='timetable')){
+        a++; clearTimeout(at); at=setTimeout(()=>a=0,8000);
+        if(a>=10){ a=0; unlockSecret('tab-flipper'); }
+      } else if(tab!=='timetable'&&tab!=='secrets'){ a=0; }
+      last=tab;
+    });
+  });
+})();
+
+(function(){
+  let a=0,at=null;
+  const send=$('send-btn'), input=$('msg-input');
+  const tryEmpty=()=>{
+    if(input && input.value.trim()==='') {
+      a++; clearTimeout(at); at=setTimeout(()=>a=0,15000);
+      if(a>=10){ a=0; unlockSecret('doorbell'); }
+    } else { a=0; }
+  };
+  if(send) send.addEventListener('click',tryEmpty);
+  if(input) input.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey) tryEmpty(); });
+})();
+
+(function(){
+  let clicks=[];
+  document.addEventListener('click',e=>{
+    const row=e.target.closest && e.target.closest('.msg-row');
+    if(!row) return;
+    const now=Date.now();
+    clicks=clicks.filter(t=>now-t<600);
+    clicks.push(now);
+    if(clicks.length>=3){ clicks=[]; unlockSecret('triple-threat'); }
+  });
+})();
+
+(function(){
+  let buf='',bt=null;
+  document.addEventListener('keydown',e=>{
+    if(e.ctrlKey||e.altKey||e.metaKey||typeof e.key!=='string'||e.key.length!==1) return;
+    buf=(buf+e.key.toLowerCase()).slice(-10);
+    clearTimeout(bt); bt=setTimeout(()=>buf='',3000);
+    if(buf==='npmrundev'){ buf=''; unlockSecret('old-school'); }
+  });
+})();
+
+(function(){
+  let a=0, openedAt=null;
+  const backdrop=$('settings-backdrop');
+  if(backdrop){
+    const observer=new MutationObserver(()=>{
+      if(backdrop.classList.contains('open') && openedAt===null){
+        openedAt=Date.now();
+      } else if(!backdrop.classList.contains('open') && openedAt!==null){
+        if(Date.now()-openedAt<=2000){
+          a++; if(a>=8){ a=0; unlockSecret('full-circle'); }
+        } else { a=0; }
+        openedAt=null;
+      }
+    });
+    observer.observe(backdrop,{attributes:true,attributeFilter:['class']});
+  }
+})();
 
 renderSecrets();
 
