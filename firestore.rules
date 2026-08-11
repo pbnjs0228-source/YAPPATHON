@@ -305,7 +305,6 @@ service cloud.firestore {
           && (resource.data.uid == request.auth.uid || isAdmin());
 
         allow update: if false; // no message-edit feature
-      }
 
     // YAPPATHON VOICE CHAT RULES
     // WebRTC media stays peer-to-peer. Firestore stores only call state,
@@ -388,6 +387,7 @@ service cloud.firestore {
         allow update, delete: if false;
       }
     }
+  }
   }
   }
 }
