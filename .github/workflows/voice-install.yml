@@ -18,20 +18,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install voice loader and Firestore rules
+      - name: Install voice loader, context bridge, and Firestore rules
         shell: python
         run: |
           from pathlib import Path
 
           index = Path('index.html')
           text = index.read_text(encoding='utf-8')
-          marker = '<script type="module" src="./voice.js"></script>'
-          if marker not in text:
+
+          context_marker = '// YAPPATHON VOICE CONTEXT BRIDGE'
+          if context_marker not in text:
+              bridge = '''\n// YAPPATHON VOICE CONTEXT BRIDGE\n// Exposes read-only getters for the separate voice module without\n// leaking mutable app state into the global namespace.\nwindow.YappathonVoiceContext = {\n  get db(){ return db; },\n  get currentUser(){ return currentUser; },\n  get profile(){ return profile; },\n  get userCache(){ return userCache; },\n  get dmCache(){ return dmCache; },\n  get currentConvoType(){ return currentConvoType; },\n  get currentDmId(){ return currentDmId; },\n  get currentChannel(){ return currentChannel; },\n  toast\n};\n'''
+              needle = '</script>\n</body>'
+              if needle not in text:
+                  raise SystemExit('index.html does not contain the main script closing block')
+              text = text.replace(needle, bridge + '\n</script>\n</body>', 1)
+
+          loader = '<script type="module" src="./voice.js"></script>'
+          if loader not in text:
               needle = '</body>'
               if needle not in text:
                   raise SystemExit('index.html does not contain </body>')
-              text = text.replace(needle, marker + '\n' + needle, 1)
-              index.write_text(text, encoding='utf-8')
+              text = text.replace(needle, loader + '\n' + needle, 1)
+
+          index.write_text(text, encoding='utf-8')
 
           rules = Path('firestore.rules')
           r = rules.read_text(encoding='utf-8')
