@@ -88,8 +88,6 @@
       }
       if (count) await batch.commit();
     } catch (e) {
-      // A failed history sync should never break the app. The normal profile
-      // listener can retry the next time the profile changes.
       console.warn('YAPPATHON message profile sync failed:', e);
     } finally {
       syncing.delete(uid);
@@ -157,8 +155,8 @@
     }
   }
 
-  async function finishCallLog(c) {
-    if (!callState || callState.id !== callId(c)) return;
+  async function finishCallLog() {
+    if (!callState) return;
     const state = callState;
     callState = null;
     localStorage.removeItem('yappathon-call-log');
@@ -190,20 +188,16 @@
   async function watchCalls() {
     const c = convo();
     const active = activeCallStage();
-    if (!c) {
-      if (callState) {
-        const old = callState.convo;
-        await finishCallLog(old);
-      }
+
+    if (active && c) {
+      const call = await getCallDoc(c);
+      if (call?.active) await startCallLog(c, call);
       return;
     }
 
-    if (active) {
-      const call = await getCallDoc(c);
-      if (call?.active) await startCallLog(c, call);
-    } else if (callState && callState.id === callId(c)) {
-      await finishCallLog(c);
-    }
+    // If the user navigated away from the conversation, use the original
+    // conversation saved with the call rather than losing the final duration.
+    if (!active && callState) await finishCallLog();
   }
 
   function start() {
