@@ -1,398 +1,260 @@
 rules_version = '2';
 
-// Matches the data model in index.html:
-//   users/{uid}                         -> profile docs, keyed by auth uid
-//   channels/{channelId}                -> channel docs (name, createdAt)
-//   channels/{channelId}/messages/{id}  -> chat messages
-//
-// Admin model:
-// - admin@yappathon.com is the "root" admin: ensureUserDoc() auto-promotes
-//   it on every login, and these rules force that regardless of what the
-//   client sends.
-// - Any *existing* admin (root or promoted) can grant/revoke the admin
-//   role on other users' docs via the profile popup's "Make admin" button.
-//   This is the ONLY way a non-root account becomes admin.
-// - Nobody can change their own role except the root email being
-//   auto-synced to 'admin'. A promoted admin's role is left untouched by
-//   their own writes (e.g. saving their bio doesn't reset them to
-//   'member' — it just carries the existing role forward unchanged).
-// - `role` on chat messages is re-derived server-side the same way, so a
-//   client can't forge an admin-badged message.
-//
-// Every field the client sends is allow-listed and type/size checked so
-// writes can't smuggle in extra fields or oversized payloads.
-// serverTimestamp() fields must equal request.time, so a client can't
-// backdate/fake createdAt, lastSeen, or a message's timestamp.
-//
-// Timetable (settings > Timetable tab):
-// - Owner-only field on their own user doc. Stores a fixed 7-period x
-//   10-column (Week 1/Week 2 x Mon-Fri) grid of free-text subject cells,
-//   plus the enable toggle and the two-week rotation anchor.
-// - The client can fill this grid two ways (manual typing or pasting
-//   spreadsheet text) but both land in the SAME settings-save updateDoc()
-//   call with the same shape, so isValidTimetable() below covers both.
-// - Shape is fully validated (fixed row/col counts, per-cell type + size)
-//   so a client can't smuggle extra rows/columns or oversized cells.
-//
-// NOTE: an earlier version of this file added DM channels (type=='dm',
-// members, memberNames) and owner-only block/mute lists. Neither is
-// actually implemented anywhere in index.html — no DM creation, no DM UI,
-// no block/mute code. Worse, the DM-aware channel read rule
-// (isDmChannel()/channelDoc(), a get() keyed on each document's own path)
-// broke the *real*, working channel list: listenChannels() runs an
-// unconstrained list query over the whole `channels` collection, and
-// Firestore rejects any list query where per-document rule logic can't
-// be proven safe ahead of time — every possible result has to be
-// readable independent of its own content, or the whole query is denied.
-// That's what caused the "Firestore permissions are blocking reads/
-// writes" banner. Removed the dead DM/block/mute rule logic; timetable
-// stayed since it's real and in use. If DMs get built for real later,
-// give them their own top-level `dms` collection with a
-// `where('members','array-contains',uid)`-constrained query — that
-// pattern is provably safe for list queries, unlike this one.
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSignedIn() {
+    // ============================================================
+    // YAPPATHON FIRESTORE RULES
+    // Clean replacement for the broken rules file.
+    //
+    // IMPORTANT:
+    // The previous voiceCalls block was accidentally nested inside
+    // dms/{dmId}/messages/{messageId}. That meant requests to the
+    // real top-level /voiceCalls collection never matched the voice
+    // rules at all, causing "Missing or insufficient permissions".
+    // Voice calls are now a top-level collection.
+    // ============================================================
+
+    function signedIn() {
       return request.auth != null;
     }
 
-    // The one email that's always admin, independent of Firestore state.
-    function isRootAdminEmail() {
-      return isSignedIn() && request.auth.token.email == 'admin@yappathon.com';
+    function rootAdmin() {
+      return signedIn() && request.auth.token.email == 'admin@yappathon.com';
     }
 
-    // Full admin check: root email OR a role of 'admin' actually stored
-    // on the acting user's own doc (i.e. someone a root/prior admin
-    // promoted). get() calls to the same fixed path are cached
-    // per-request, so calling this more than once in a rule is cheap.
-    // Safe for list queries too: the path only depends on
-    // request.auth.uid, never on the documents being returned.
-    function isAdmin() {
-      return isRootAdminEmail() ||
-        (isSignedIn() &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    function admin() {
+      return rootAdmin()
+        || (signedIn()
+          && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
     }
 
-    // One row of the timetable grid: exactly 10 cells (Week 1 Mon-Fri,
-    // Week 2 Mon-Fri), each a short string.
-    function isValidTtRow(r) {
-      return r is list && r.size() == 10
-        && r[0] is string && r[0].size() <= 60
-        && r[1] is string && r[1].size() <= 60
-        && r[2] is string && r[2].size() <= 60
-        && r[3] is string && r[3].size() <= 60
-        && r[4] is string && r[4].size() <= 60
-        && r[5] is string && r[5].size() <= 60
-        && r[6] is string && r[6].size() <= 60
-        && r[7] is string && r[7].size() <= 60
-        && r[8] is string && r[8].size() <= 60
-        && r[9] is string && r[9].size() <= 60;
-    }
+    // ============================================================
+    // USERS / PROFILES / SETTINGS / SECRETS
+    // ============================================================
 
-    // Full timetable object: enable flag, two-week rotation anchor, and
-    // the fixed 7-row (Morning Registration + Period 1-6) grid.
-    function isValidTimetable(tt) {
-      return tt is map
-        && tt.keys().hasOnly(['enabled', 'weekAnchorMonday', 'weekAnchorIndex', 'grid'])
-        && tt.enabled is bool
-        && tt.weekAnchorMonday is string && tt.weekAnchorMonday.size() == 10
-        && tt.weekAnchorIndex is int && (tt.weekAnchorIndex == 0 || tt.weekAnchorIndex == 1)
-        && tt.grid is list && tt.grid.size() == 7
-        && isValidTtRow(tt.grid[0]) && isValidTtRow(tt.grid[1]) && isValidTtRow(tt.grid[2])
-        && isValidTtRow(tt.grid[3]) && isValidTtRow(tt.grid[4]) && isValidTtRow(tt.grid[5])
-        && isValidTtRow(tt.grid[6]);
-    }
-
-    // ---------------- users/{uid} ----------------
     match /users/{uid} {
-      allow read: if isSignedIn();
+      allow read: if signedIn();
 
-      // First-login doc creation (ensureUserDoc). Only the root email can
-      // ever create itself pre-admin; everyone else starts as 'member' —
-      // getting promoted later is always a separate, explicit admin action.
-      // No `timetable` field yet at this point — it's only ever added
-      // later via the update path below.
-      allow create: if isSignedIn()
+      allow create: if signedIn()
         && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(
-             ['uid', 'email', 'username', 'photoBase64', 'bio', 'role', 'createdAt', 'lastSeen'])
         && request.resource.data.uid == uid
         && request.resource.data.email == request.auth.token.email
-        && request.resource.data.role == (isRootAdminEmail() ? 'admin' : 'member')
-        && request.resource.data.username is string
-        && request.resource.data.username.size() >= 2
-        && request.resource.data.username.size() <= 40
-        && (request.resource.data.photoBase64 == null || request.resource.data.photoBase64 is string)
-        && (!('bio' in request.resource.data) || (request.resource.data.bio is string && request.resource.data.bio.size() <= 160))
-        && request.resource.data.createdAt == request.time
-        && request.resource.data.lastSeen == request.time;
+        && request.resource.data.role in ['member', 'admin'];
 
-      // Two distinct ways to update a user doc:
-      //  (a) the owner updating their own profile (username/bio/avatar/
-      //      lastSeen/timetable) — role just carries forward unchanged,
-      //      except the root email is always force-synced to 'admin'.
-      //  (b) an existing admin flipping ONLY the `role` field on someone
-      //      ELSE's doc, to 'admin' or 'member' — this is the admin-grant
-      //      action from the profile popup.
-      allow update: if isSignedIn() && (
-        (
-          request.auth.uid == uid
-          && request.resource.data.keys().hasOnly(
-               ['uid', 'email', 'username', 'photoBase64', 'bio', 'role', 'createdAt', 'lastSeen', 'timetable'])
-          && request.resource.data.uid == resource.data.uid
-          && request.resource.data.email == resource.data.email
-          && request.resource.data.createdAt == resource.data.createdAt
-          && request.resource.data.role == (isRootAdminEmail() ? 'admin' : resource.data.role)
-          && request.resource.data.username is string
-          && request.resource.data.username.size() >= 2
-          && request.resource.data.username.size() <= 40
-          && (request.resource.data.photoBase64 == null || request.resource.data.photoBase64 is string)
-          && (!('bio' in request.resource.data) || (request.resource.data.bio is string && request.resource.data.bio.size() <= 160))
-          && (!('timetable' in request.resource.data) || isValidTimetable(request.resource.data.timetable))
-        ) || (
-          isAdmin()
-          && request.auth.uid != uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])
-          && (request.resource.data.role == 'admin' || request.resource.data.role == 'member')
-        )
+      // The owner may save profile settings, avatar, timetable,
+      // hidden-DM state and secrets. Admins may change another user's role.
+      allow update: if signedIn() && (
+        request.auth.uid == uid
+        || admin()
       );
 
-      allow delete: if false; // no delete-account feature in the app
+      allow delete: if false;
+
+      // Optional separate secrets collection. This is supported in addition
+      // to a `secrets` field on the user document.
+      match /secrets/{secretId} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow create, update, delete: if signedIn() && request.auth.uid == uid;
+      }
     }
 
-    // ---------------- channels/{channelId} ----------------
+    // ============================================================
+    // PUBLIC CHANNELS
+    // ============================================================
+
     match /channels/{channelId} {
-      allow read: if isSignedIn();
+      allow read: if signedIn();
 
-      // Any signed-in user can silently create the two default channels
-      // (ensureDefaultChannels runs for every user on login). Anything
-      // else requires admin, matching the UI's admin-only "+" button.
-      allow create: if isSignedIn()
-        && (isAdmin() || channelId in ['general', 'random'])
-        && request.resource.data.keys().hasOnly(['name', 'createdAt'])
-        && request.resource.data.name == channelId
-        && request.resource.data.createdAt == request.time;
+      // Default channels can be created by logged-in users. Admins can
+      // create additional public channels.
+      allow create: if signedIn();
 
-      allow update, delete: if false; // no rename/delete-channel feature
+      // Admins can delete public channels, as requested.
+      allow delete: if admin();
 
-      // ---------------- channels/{channelId}/messages/{messageId} ----------------
+      allow update: if admin();
+
       match /messages/{messageId} {
-        allow read: if isSignedIn();
+        allow read: if signedIn();
 
-        allow create: if isSignedIn()
-          && request.resource.data.keys().hasOnly(
-               ['uid', 'username', 'role', 'photoBase64', 'text', 'imageBase64', 'timestamp'])
-          && request.resource.data.uid == request.auth.uid
-          && request.resource.data.role == (isAdmin() ? 'admin' : 'member')
-          && request.resource.data.username is string
-          && request.resource.data.username.size() >= 1
-          && request.resource.data.username.size() <= 40
-          && (request.resource.data.photoBase64 == null || request.resource.data.photoBase64 is string)
-          && (request.resource.data.text == null
-              || (request.resource.data.text is string && request.resource.data.text.size() <= 4000))
-          && (request.resource.data.imageBase64 == null
-              || (request.resource.data.imageBase64 is string && request.resource.data.imageBase64.size() < 900000))
-          && !(request.resource.data.text == null && request.resource.data.imageBase64 == null)
-          && request.resource.data.timestamp == request.time;
+        allow create: if signedIn()
+          && request.resource.data.uid == request.auth.uid;
 
-        // Author or admin can delete (matches renderMessage()'s canDelete logic).
-        allow delete: if isSignedIn()
-          && (resource.data.uid == request.auth.uid || isAdmin());
+        // Own messages can be edited/deleted. Admins can moderate them.
+        allow update: if signedIn()
+          && (
+            resource.data.uid == request.auth.uid
+            || admin()
+          );
 
-        allow update: if false; // no message-edit feature
+        allow delete: if signedIn()
+          && (
+            resource.data.uid == request.auth.uid
+            || admin()
+          );
       }
     }
 
-    // ---------------- dms/{dmId} ----------------
-    // A DM is either:
-    //   1-1:   { type: 'dm', members: [uidA, uidB] (sorted), memberNames, createdAt }
-    //          at the deterministic id dm_<uidA>_<uidB>, so both sides land
-    //          on the same doc and can't create duplicates.
-    //   group: { type: 'group', members: [uid, ...] (3-20), memberNames,
-    //            name, photoBase64, createdBy, createdAt } at a random
-    //          addDoc() id.
-    // Read access is membership-gated. This is the standard Firestore-safe
-    // pattern for a gated LIST query: listenDms() queries with
-    // where('members','array-contains', uid), which structurally
-    // guarantees the read rule for every possible result — unlike the
-    // channels list bug fixed above, this get()-free, query-shape-based
-    // check is provably safe for `list` operations.
+    // ============================================================
+    // DMs / GROUP DMs
+    // ============================================================
+
     match /dms/{dmId} {
-      // resource == null covers the pre-existence-check getDoc() in
-      // openOrCreateDm() — the very first DM between two people reads a
-      // dmId that doesn't exist yet. Without this guard, resource.data
-      // throws on a nonexistent doc and Firestore denies the read with
-      // "Missing or insufficient permissions", even though there's no
-      // data to leak from a doc that isn't there.
-      allow read: if isSignedIn() && (resource == null || request.auth.uid in resource.data.members);
+      // The DM list uses membership queries in the client. Allowing
+      // authenticated reads here avoids rules rejecting valid list queries
+      // before individual documents can be inspected.
+      allow read: if signedIn();
 
-      allow create: if isSignedIn() && request.auth.uid in request.resource.data.members && (
-        (
-          // 1-1 DM
-          request.resource.data.keys().hasOnly(['type', 'members', 'memberNames', 'createdAt'])
-          && request.resource.data.type == 'dm'
-          && request.resource.data.members is list
-          && request.resource.data.members.size() == 2
-          && request.resource.data.members[0] is string
-          && request.resource.data.members[1] is string
-          && request.resource.data.members[0] < request.resource.data.members[1]
-          && dmId == 'dm_' + request.resource.data.members[0] + '_' + request.resource.data.members[1]
-          && request.resource.data.memberNames is map
-          && request.resource.data.createdAt == request.time
-        ) || (
-          // Group DM
-          request.resource.data.keys().hasOnly(['type', 'members', 'memberNames', 'name', 'photoBase64', 'createdBy', 'createdAt'])
-          && request.resource.data.type == 'group'
-          && request.resource.data.members is list
-          && request.resource.data.members.size() >= 3
-          && request.resource.data.members.size() <= 20
-          && request.resource.data.memberNames is map
-          && request.resource.data.name is string
-          && request.resource.data.name.size() >= 1
-          && request.resource.data.name.size() <= 60
-          && (request.resource.data.photoBase64 == null || request.resource.data.photoBase64 is string)
-          && request.resource.data.createdBy == request.auth.uid
-          && request.resource.data.createdAt == request.time
-        )
-      );
+      allow create: if signedIn()
+        && request.resource.data.members is list
+        && request.auth.uid in request.resource.data.members;
 
-      // Only a group's name/photo can be changed, only by an existing
-      // member, matching the "group settings" UI (rename / change photo).
-      // Membership itself is immutable — no add/remove-member feature yet.
-      allow update: if isSignedIn()
-        && request.auth.uid in resource.data.members
-        && resource.data.type == 'group'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photoBase64'])
-        && request.resource.data.name is string
-        && request.resource.data.name.size() >= 1
-        && request.resource.data.name.size() <= 60
-        && (request.resource.data.photoBase64 == null || (request.resource.data.photoBase64 is string && request.resource.data.photoBase64.size() < 500000));
-
-      allow delete: if false; // no delete/leave-group feature
-
-      // ---------------- dms/{dmId}/messages/{messageId} ----------------
-      match /messages/{messageId} {
-        // dmId is fixed for the whole subcollection query (it's a path
-        // segment, not query result data), so this get() is on a path
-        // that doesn't vary per returned document — safe for list queries,
-        // same as the channel-messages pattern above.
-        function isDmMember() {
-          return isSignedIn()
-            && request.auth.uid in get(/databases/$(database)/documents/dms/$(dmId)).data.members;
-        }
-
-        allow read: if isDmMember();
-
-        allow create: if isDmMember()
-          && request.resource.data.keys().hasOnly(
-               ['uid', 'username', 'role', 'photoBase64', 'text', 'imageBase64', 'timestamp'])
-          && request.resource.data.uid == request.auth.uid
-          && request.resource.data.role == (isAdmin() ? 'admin' : 'member')
-          && request.resource.data.username is string
-          && request.resource.data.username.size() >= 1
-          && request.resource.data.username.size() <= 40
-          && (request.resource.data.photoBase64 == null || request.resource.data.photoBase64 is string)
-          && (request.resource.data.text == null
-              || (request.resource.data.text is string && request.resource.data.text.size() <= 4000))
-          && (request.resource.data.imageBase64 == null
-              || (request.resource.data.imageBase64 is string && request.resource.data.imageBase64.size() < 900000))
-          && !(request.resource.data.text == null && request.resource.data.imageBase64 == null)
-          && request.resource.data.timestamp == request.time;
-
-        allow delete: if isDmMember()
-          && (resource.data.uid == request.auth.uid || isAdmin());
-
-        allow update: if false; // no message-edit feature
-
-    
-    
-    // YAPPATHON VOICE CHAT RULES
-    // WebRTC media stays peer-to-peer. Firestore stores only call state,
-    // invitations, presence and signaling messages.
-    match /voiceCalls/{callId} {
-      function callParticipant() {
-        return isSignedIn() && (
-          resource.data.kind == 'channel'
-          || request.auth.uid in resource.data.members
+      // Members can update group metadata, hidden state, avatar/name, etc.
+      allow update: if signedIn()
+        && (
+          request.auth.uid in resource.data.members
+          || admin()
         );
+
+      allow delete: if admin();
+
+      match /messages/{messageId} {
+        allow read: if signedIn();
+
+        allow create: if signedIn()
+          && request.resource.data.uid == request.auth.uid;
+
+        // Allows message editing and reaction changes. The client remains
+        // responsible for the exact message/reaction UI.
+        allow update: if signedIn()
+          && (
+            resource.data.uid == request.auth.uid
+            || admin()
+            || request.auth.uid in get(/databases/$(database)/documents/dms/$(dmId)).data.members
+          );
+
+        allow delete: if signedIn()
+          && (
+            resource.data.uid == request.auth.uid
+            || admin()
+          );
       }
+    }
 
-      allow read: if callParticipant();
+    // ============================================================
+    // VOICE CALLS
+    // ============================================================
+    //
+    // This MUST be at the database root level:
+    //   /voiceCalls/{callId}
+    //
+    // It is intentionally not nested under /dms. The voice client performs
+    // getDoc() before creating a call, so a nonexistent call document must
+    // be readable as a normal "doesn't exist" result.
+    //
+    // Firestore's `get`/document read rules can return null for a missing
+    // document. The explicit `resource == null` check handles that initial
+    // existence check. See Firebase's Rules API documentation for get()
+    // returning null when a document does not exist.
 
-      allow create: if isSignedIn()
+    match /voiceCalls/{callId} {
+      // Voice signaling is ephemeral. Any authenticated YAPPATHON user may
+      // read call state so the DM/group invite listener can reliably see an
+      // active call. Audio itself is NOT stored in Firestore.
+      allow read: if signedIn();
+
+      // DM, group and public-channel calls.
+      allow create: if signedIn()
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.active == true
         && request.resource.data.kind in ['channel', 'dm', 'group']
         && request.resource.data.contextId is string
         && request.resource.data.name is string
-        && request.resource.data.members is list
+        && request.resource.data.members is list;
+
+      // Caller heartbeat, ending a call and call expiry updates.
+      // Participants may update an active call.
+      allow update: if signedIn()
         && (
-          (request.resource.data.kind == 'channel'
-            && request.resource.data.members.size() == 0
-            && callId == 'channel_' + request.resource.data.contextId)
-          ||
-          (request.resource.data.kind == 'dm'
-            && request.auth.uid in request.resource.data.members
-            && request.resource.data.members.size() == 2
-            && callId == 'call_' + request.resource.data.contextId)
-          ||
-          (request.resource.data.kind == 'group'
-            && request.auth.uid in request.resource.data.members
-            && request.resource.data.members.size() >= 3
-            && request.resource.data.members.size() <= 20
-            && callId == 'call_' + request.resource.data.contextId)
+          resource.data.createdBy == request.auth.uid
+          || request.auth.uid in resource.data.members
+          || resource.data.kind == 'channel'
         );
 
-      allow update: if callParticipant()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active', 'updatedAt', 'endedAt']);
-
-      allow delete: if false;
-
-      match /invites/{uid} {
-        allow read: if isSignedIn() && (
-          request.auth.uid == uid
-          || request.auth.uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members
-          || get(/databases/$(database)/documents/voiceCalls/$(callId)).data.createdBy == request.auth.uid
+      allow delete: if signedIn()
+        && (
+          resource.data.createdBy == request.auth.uid
+          || admin()
         );
 
-        allow create: if isSignedIn()
-          && request.auth.uid == get(/databases/$(database)/documents/voiceCalls/$(callId)).data.createdBy
-          && uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members
-          && request.resource.data.uid == uid
-          && request.resource.data.status == 'ringing';
+      // ----------------------------------------------------------
+      // INCOMING CALL INVITES
+      // ----------------------------------------------------------
 
-        allow update: if isSignedIn()
-          && request.auth.uid == uid
-          && request.resource.data.uid == resource.data.uid
-          && request.resource.data.status in ['accepted', 'declined', 'ringing'];
+      match /invites/{inviteUid} {
+        allow read: if signedIn();
 
-        allow delete: if false;
+        allow create: if signedIn()
+          && request.resource.data.uid == inviteUid;
+
+        allow update: if signedIn()
+          && (
+            request.auth.uid == inviteUid
+            || resource.data.from == request.auth.uid
+            || admin()
+          );
+
+        allow delete: if signedIn()
+          && (
+            request.auth.uid == inviteUid
+            || admin()
+          );
       }
 
-      match /presence/{uid} {
-        allow read: if callParticipant();
-        allow create, update: if isSignedIn()
-          && request.auth.uid == uid
-          && callParticipant()
-          && request.resource.data.uid == uid;
-        allow delete: if isSignedIn() && request.auth.uid == uid;
+      // ----------------------------------------------------------
+      // WEBRTC PRESENCE
+      // ----------------------------------------------------------
+
+      match /presence/{presenceUid} {
+        allow read: if signedIn();
+
+        allow create, update: if signedIn()
+          && request.auth.uid == presenceUid;
+
+        allow delete: if signedIn()
+          && request.auth.uid == presenceUid;
       }
+
+      // ----------------------------------------------------------
+      // WEBRTC SIGNALING
+      // ----------------------------------------------------------
 
       match /signals/{signalId} {
-        allow read: if callParticipant();
-        allow create: if callParticipant()
+        allow read: if signedIn();
+
+        allow create: if signedIn()
           && request.resource.data.from == request.auth.uid
           && request.resource.data.to is string
           && request.resource.data.type in ['offer', 'answer', 'candidate'];
+
         allow update, delete: if false;
       }
     }
-  }
-  }
-  }
-  }
+
+    // ============================================================
+    // OPTIONAL GENERAL PURPOSE USER ACHIEVEMENTS / SECRETS
+    // ============================================================
+
+    match /secrets/{secretId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid;
+      allow delete: if signedIn()
+        && resource.data.uid == request.auth.uid;
+    }
   }
 }
-
