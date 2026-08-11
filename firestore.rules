@@ -3,21 +3,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ============================================================
-    // YAPPATHON FIRESTORE RULES
-    // Clean replacement for the broken rules file.
-    //
-    // IMPORTANT:
-    // The previous voiceCalls block was accidentally nested inside
-    // dms/{dmId}/messages/{messageId}. That meant requests to the
-    // real top-level /voiceCalls collection never matched the voice
-    // rules at all, causing "Missing or insufficient permissions".
-    // Voice calls are now a top-level collection.
-    // ============================================================
-
-    function signedIn() {
-      return request.auth != null;
-    }
+    function signedIn() { return request.auth != null; }
 
     function rootAdmin() {
       return signedIn() && request.auth.token.email == 'admin@yappathon.com';
@@ -30,313 +16,147 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
     }
 
-    // ============================================================
-    // USERS / PROFILES / SETTINGS / SECRETS
-    // ============================================================
-
+    // ------------------------------------------------------------
+    // USERS / PROFILES / TIMETABLE / SECRETS
+    // ------------------------------------------------------------
     match /users/{uid} {
       allow read: if signedIn();
-
       allow create: if signedIn()
         && request.auth.uid == uid
         && request.resource.data.uid == uid
         && request.resource.data.email == request.auth.token.email
-        && request.resource.data.role in ['member', 'admin'];
-
-      // The owner may save profile settings, avatar, timetable,
-      // hidden-DM state and secrets. Admins may change another user's role.
-      allow update: if signedIn() && (
-        request.auth.uid == uid
-        || admin()
-      );
-
+        && request.resource.data.role in ['member','admin'];
+      allow update: if signedIn() && (request.auth.uid == uid || admin());
       allow delete: if false;
 
-      // Optional separate secrets collection. This is supported in addition
-      // to a `secrets` field on the user document.
       match /secrets/{secretId} {
         allow read: if signedIn() && request.auth.uid == uid;
         allow create, update, delete: if signedIn() && request.auth.uid == uid;
       }
     }
 
-    // ============================================================
+    // ------------------------------------------------------------
     // PUBLIC CHANNELS
-    // ============================================================
-
+    // ------------------------------------------------------------
     match /channels/{channelId} {
       allow read: if signedIn();
-
-      // Default channels can be created by logged-in users. Admins can
-      // create additional public channels.
       allow create: if signedIn();
-
-      // Admins can delete public channels, as requested.
-      allow delete: if admin();
-
       allow update: if admin();
+      allow delete: if admin();
 
       match /messages/{messageId} {
         allow read: if signedIn();
+        allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
 
-        allow create: if signedIn()
-          && request.resource.data.uid == request.auth.uid;
-
-        // Own messages can be edited/deleted. Admins can moderate them.
-        allow update: if signedIn()
-          && (
+        // Owners may edit their own text OR let the profile-history sync
+        // update only their username/PFP on old messages.
+        allow update: if signedIn() && (
+          admin()
+          || (
             resource.data.uid == request.auth.uid
-            || admin()
-          );
+            && request.resource.data.uid == resource.data.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'text','editedAt','username','photoBase64'
+            ])
+          )
+        );
 
-        allow delete: if signedIn()
-          && (
-            resource.data.uid == request.auth.uid
-            || admin()
-          );
+        allow delete: if signedIn() && (resource.data.uid == request.auth.uid || admin());
       }
     }
 
-    // ============================================================
-    // DMs / GROUP DMs
-    // ============================================================
-
+    // ------------------------------------------------------------
+    // DMS / GROUP DMS
+    // ------------------------------------------------------------
     match /dms/{dmId} {
-      // The DM list uses membership queries in the client. Allowing
-      // authenticated reads here avoids rules rejecting valid list queries
-      // before individual documents can be inspected.
       allow read: if signedIn();
-
       allow create: if signedIn()
         && request.resource.data.members is list
         && request.auth.uid in request.resource.data.members;
-
-      // Members can update group metadata, hidden state, avatar/name, etc.
-      allow update: if signedIn()
-        && (
-          request.auth.uid in resource.data.members
-          || admin()
-        );
-
+      allow update: if signedIn() && (request.auth.uid in resource.data.members || admin());
       allow delete: if admin();
 
       match /messages/{messageId} {
         allow read: if signedIn();
+        allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
 
-        allow create: if signedIn()
-          && request.resource.data.uid == request.auth.uid;
+        // Members may change reactions; owners may edit text and their
+        // username/PFP history. Admins may moderate.
+        allow update: if signedIn() && (
+          admin()
+          || request.auth.uid in get(/databases/$(database)/documents/dms/$(dmId)).data.members
+        );
 
-        // Allows message editing and reaction changes. The client remains
-        // responsible for the exact message/reaction UI.
-        allow update: if signedIn()
-          && (
-            resource.data.uid == request.auth.uid
-            || admin()
-            || request.auth.uid in get(/databases/$(database)/documents/dms/$(dmId)).data.members
-          );
-
-        allow delete: if signedIn()
-          && (
-            resource.data.uid == request.auth.uid
-            || admin()
-          );
+        allow delete: if signedIn() && (resource.data.uid == request.auth.uid || admin());
       }
     }
 
-    // ============================================================
+    // ------------------------------------------------------------
     // VOICE CALLS
-    // ============================================================
-    //
-    // This MUST be at the database root level:
-    //   /voiceCalls/{callId}
-    //
-    // It is intentionally not nested under /dms. The voice client performs
-    // getDoc() before creating a call, so a nonexistent call document must
-    // be readable as a normal "doesn't exist" result.
-    //
-    // Firestore's `get`/document read rules can return null for a missing
-    // document. The explicit `resource == null` check handles that initial
-    // existence check. See Firebase's Rules API documentation for get()
-    // returning null when a document does not exist.
-
+    // ------------------------------------------------------------
+    // There is intentionally ONE voiceCalls block. The previous rules file
+    // contained two overlapping blocks, which made the voice rules difficult
+    // to reason about and caused conflicting behavior.
     match /voiceCalls/{callId} {
-      // Voice signaling is ephemeral. Any authenticated YAPPATHON user may
-      // read call state so the DM/group invite listener can reliably see an
-      // active call. Audio itself is NOT stored in Firestore.
+      // The app can always check whether a call exists before setDoc().
+      // Authenticated users can read call state; WebRTC media is peer-to-peer.
       allow read: if signedIn();
 
-      // DM, group and public-channel calls.
       allow create: if signedIn()
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.active == true
-        && request.resource.data.kind in ['channel', 'dm', 'group']
+        && request.resource.data.kind in ['channel','dm','group']
         && request.resource.data.contextId is string
         && request.resource.data.name is string
         && request.resource.data.members is list;
 
-      // Caller heartbeat, ending a call and call expiry updates.
-      // Participants may update an active call.
-      allow update: if signedIn()
-        && (
-          resource.data.createdBy == request.auth.uid
-          || request.auth.uid in resource.data.members
-          || resource.data.kind == 'channel'
-        );
+      allow update: if signedIn() && (
+        resource.data.createdBy == request.auth.uid
+        || request.auth.uid in resource.data.members
+        || resource.data.kind == 'channel'
+      );
 
-      allow delete: if signedIn()
-        && (
-          resource.data.createdBy == request.auth.uid
-          || admin()
-        );
-
-      // ----------------------------------------------------------
-      // INCOMING CALL INVITES
-      // ----------------------------------------------------------
+      allow delete: if signedIn() && (resource.data.createdBy == request.auth.uid || admin());
 
       match /invites/{inviteUid} {
         allow read: if signedIn();
-
         allow create: if signedIn()
-          && request.resource.data.uid == inviteUid;
-
-        allow update: if signedIn()
-          && (
-            request.auth.uid == inviteUid
-            || resource.data.from == request.auth.uid
-            || admin()
-          );
-
-        allow delete: if signedIn()
-          && (
-            request.auth.uid == inviteUid
-            || admin()
-          );
+          && request.resource.data.uid == inviteUid
+          && request.resource.data.status == 'ringing';
+        allow update: if signedIn() && (
+          request.auth.uid == inviteUid
+          || resource.data.from == request.auth.uid
+          || admin()
+        );
+        allow delete: if signedIn() && (request.auth.uid == inviteUid || admin());
       }
-
-      // ----------------------------------------------------------
-      // WEBRTC PRESENCE
-      // ----------------------------------------------------------
 
       match /presence/{presenceUid} {
         allow read: if signedIn();
-
         allow create, update: if signedIn()
-          && request.auth.uid == presenceUid;
-
-        allow delete: if signedIn()
-          && request.auth.uid == presenceUid;
+          && request.auth.uid == presenceUid
+          && request.resource.data.uid == presenceUid;
+        allow delete: if signedIn() && request.auth.uid == presenceUid;
       }
-
-      // ----------------------------------------------------------
-      // WEBRTC SIGNALING
-      // ----------------------------------------------------------
 
       match /signals/{signalId} {
         allow read: if signedIn();
-
         allow create: if signedIn()
           && request.resource.data.from == request.auth.uid
           && request.resource.data.to is string
-          && request.resource.data.type in ['offer', 'answer', 'candidate'];
-
+          && request.resource.data.type in ['offer','answer','candidate'];
         allow update, delete: if false;
       }
     }
 
-    // ============================================================
-    // OPTIONAL GENERAL PURPOSE USER ACHIEVEMENTS / SECRETS
-    // ============================================================
-
+    // ------------------------------------------------------------
+    // ACHIEVEMENT / SECRET DOCUMENTS
+    // ------------------------------------------------------------
     match /secrets/{secretId} {
       allow read: if signedIn();
-      allow create: if signedIn()
-        && request.resource.data.uid == request.auth.uid;
-      allow update: if signedIn()
-        && resource.data.uid == request.auth.uid;
-      allow delete: if signedIn()
-        && resource.data.uid == request.auth.uid;
-    }
-
-    // YAPPATHON VOICE CHAT RULES
-    // WebRTC media stays peer-to-peer. Firestore stores only call state,
-    // invitations, presence and signaling messages.
-    match /voiceCalls/{callId} {
-      function callParticipant() {
-        return isSignedIn() && (
-          resource.data.kind == 'channel'
-          || request.auth.uid in resource.data.members
-        );
-      }
-
-      allow read: if callParticipant();
-
-      allow create: if isSignedIn()
-        && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.active == true
-        && request.resource.data.kind in ['channel', 'dm', 'group']
-        && request.resource.data.contextId is string
-        && request.resource.data.name is string
-        && request.resource.data.members is list
-        && (
-          (request.resource.data.kind == 'channel'
-            && request.resource.data.members.size() == 0
-            && callId == 'channel_' + request.resource.data.contextId)
-          ||
-          (request.resource.data.kind == 'dm'
-            && request.auth.uid in request.resource.data.members
-            && request.resource.data.members.size() == 2
-            && callId == 'call_' + request.resource.data.contextId)
-          ||
-          (request.resource.data.kind == 'group'
-            && request.auth.uid in request.resource.data.members
-            && request.resource.data.members.size() >= 3
-            && request.resource.data.members.size() <= 20
-            && callId == 'call_' + request.resource.data.contextId)
-        );
-
-      allow update: if callParticipant()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active', 'updatedAt', 'endedAt']);
-
-      allow delete: if false;
-
-      match /invites/{uid} {
-        allow read: if isSignedIn() && (
-          request.auth.uid == uid
-          || request.auth.uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members
-          || get(/databases/$(database)/documents/voiceCalls/$(callId)).data.createdBy == request.auth.uid
-        );
-
-        allow create: if isSignedIn()
-          && request.auth.uid == get(/databases/$(database)/documents/voiceCalls/$(callId)).data.createdBy
-          && uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members
-          && request.resource.data.uid == uid
-          && request.resource.data.status == 'ringing';
-
-        allow update: if isSignedIn()
-          && request.auth.uid == uid
-          && request.resource.data.uid == resource.data.uid
-          && request.resource.data.status in ['accepted', 'declined', 'ringing'];
-
-        allow delete: if false;
-      }
-
-      match /presence/{uid} {
-        allow read: if callParticipant();
-        allow create, update: if isSignedIn()
-          && request.auth.uid == uid
-          && callParticipant()
-          && request.resource.data.uid == uid;
-        allow delete: if isSignedIn() && request.auth.uid == uid;
-      }
-
-      match /signals/{signalId} {
-        allow read: if callParticipant();
-        allow create: if callParticipant()
-          && request.resource.data.from == request.auth.uid
-          && request.resource.data.to is string
-          && request.resource.data.type in ['offer', 'answer', 'candidate'];
-        allow update, delete: if false;
-      }
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn() && resource.data.uid == request.auth.uid;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
   }
 }
