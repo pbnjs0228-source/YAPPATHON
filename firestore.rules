@@ -88,4 +88,87 @@ service cloud.firestore {
       allow update, delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
   }
+
+
+    // YAPPATHON VOICE CHAT RULES
+    // WebRTC media stays peer-to-peer. Firestore stores only call state,
+    // invitations, presence and signaling messages.
+    match /voiceCalls/{callId} {
+      function callParticipant() {
+        return isSignedIn() && (
+          resource.data.kind == 'channel'
+          || request.auth.uid in resource.data.members
+        );
+      }
+
+      allow read: if callParticipant();
+
+      allow create: if isSignedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.active == true
+        && request.resource.data.kind in ['channel', 'dm', 'group']
+        && request.resource.data.contextId is string
+        && request.resource.data.name is string
+        && request.resource.data.members is list
+        && (
+          (request.resource.data.kind == 'channel'
+            && request.resource.data.members.size() == 0
+            && callId == 'channel_' + request.resource.data.contextId)
+          ||
+          (request.resource.data.kind == 'dm'
+            && request.auth.uid in request.resource.data.members
+            && request.resource.data.members.size() == 2
+            && callId == 'call_' + request.resource.data.contextId)
+          ||
+          (request.resource.data.kind == 'group'
+            && request.auth.uid in request.resource.data.members
+            && request.resource.data.members.size() >= 3
+            && request.resource.data.members.size() <= 20
+            && callId == 'call_' + request.resource.data.contextId)
+        );
+
+      allow update: if callParticipant()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active', 'updatedAt', 'endedAt']);
+
+      allow delete: if false;
+
+      match /invites/{uid} {
+        allow read: if isSignedIn() && (
+          request.auth.uid == uid
+          || request.auth.uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members
+          || get(/databases/$(database)/documents/voiceCalls/$(callId)).data.createdBy == request.auth.uid
+        );
+
+        allow create: if isSignedIn()
+          && request.auth.uid == get(/databases/$(database)/documents/voiceCalls/$(callId)).data.createdBy
+          && uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members
+          && request.resource.data.uid == uid
+          && request.resource.data.status == 'ringing';
+
+        allow update: if isSignedIn()
+          && request.auth.uid == uid
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.status in ['accepted', 'declined', 'ringing'];
+
+        allow delete: if false;
+      }
+
+      match /presence/{uid} {
+        allow read: if callParticipant();
+        allow create, update: if isSignedIn()
+          && request.auth.uid == uid
+          && callParticipant()
+          && request.resource.data.uid == uid;
+        allow delete: if isSignedIn() && request.auth.uid == uid;
+      }
+
+      match /signals/{signalId} {
+        allow read: if callParticipant();
+        allow create: if callParticipant()
+          && request.resource.data.from == request.auth.uid
+          && request.resource.data.to is string
+          && request.resource.data.type in ['offer', 'answer', 'candidate'];
+        allow update, delete: if false;
+      }
+    }
 }
