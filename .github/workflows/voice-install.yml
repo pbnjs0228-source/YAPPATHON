@@ -27,23 +27,20 @@ jobs:
           text = index.read_text(encoding='utf-8')
 
           bridge = """\n// YAPPATHON VOICE CONTEXT BRIDGE\n// Exposes read-only getters for the separate voice module without\n// leaking mutable app state into the global namespace.\nwindow.YappathonVoiceContext = {\n  get db(){ return db; },\n  get currentUser(){ return currentUser; },\n  get profile(){ return profile; },\n  get userCache(){ return userCache; },\n  get dmCache(){ return dmCache; },\n  get currentConvoType(){ return currentConvoType; },\n  get currentDmId(){ return currentDmId; },\n  get currentChannel(){ return currentChannel; },\n  toast\n};\n"""
-
-          # Repair any malformed copy from an earlier installer run.
-          text = text.replace(bridge, '')
-          text = text.replace('<script type="module" src="./voice.js">\n</script>', '<script type="module" src="./voice.js"></script>')
-          text = text.replace('<script type="module" src="./voice.js">\n\n</script>', '<script type="module" src="./voice.js"></script>')
-
           loader = '<script type="module" src="./voice.js"></script>'
-          if loader not in text:
-              text = text.replace('</body>', loader + '\n</body>', 1)
 
-          loader_pos = text.find(loader)
-          if loader_pos < 0:
-              raise SystemExit('voice loader missing')
-          main_end = text.rfind('</script>', 0, loader_pos)
+          # Clean up any previous installer output, including duplicate or
+          # malformed loader tags, then install exactly one clean loader.
+          text = text.replace(bridge, '')
+          text = text.replace(loader, '')
+          text = text.replace('<script type="module" src="./voice.js">\n</script>', '')
+          text = text.replace('<script type="module" src="./voice.js">\n\n</script>', '')
+
+          main_end = text.rfind('</script>')
           if main_end < 0:
               raise SystemExit('main inline module closing tag not found')
           text = text[:main_end] + bridge + '\n' + text[main_end:]
+          text = text.replace('</body>', loader + '\n</body>', 1)
           index.write_text(text, encoding='utf-8')
 
           rules = Path('firestore.rules')
