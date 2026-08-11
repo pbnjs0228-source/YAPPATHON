@@ -34,22 +34,27 @@ jobs:
           test -f index.html
           test -f voice.js
           test -f dm-call-ui.js
+          test -f live-sync.js
           touch .nojekyll
 
-          # Load the DM call UI after the existing application scripts.
-          # This keeps the normal channel voice panel while moving DM/group
-          # calls into the Discord-style in-conversation call stage.
+          # Load the extra UI helpers after the existing application scripts.
+          # dm-call-ui moves all calls into the in-app call stage.
+          # live-sync keeps old message profile data current and adds call log messages.
           python3 - <<'PY'
           from pathlib import Path
           p = Path('index.html')
           text = p.read_text(encoding='utf-8')
-          tag = '<script src="./dm-call-ui.js"></script>'
-          if tag not in text:
-              if '</body>' in text:
-                  text = text.replace('</body>', f'{tag}\n</body>', 1)
-              else:
-                  text += '\n' + tag + '\n'
-              p.write_text(text, encoding='utf-8')
+          tags = [
+              '<script src="./dm-call-ui.js"></script>',
+              '<script src="./live-sync.js"></script>'
+          ]
+          for tag in tags:
+              if tag not in text:
+                  if '</body>' in text:
+                      text = text.replace('</body>', f'{tag}\n</body>', 1)
+                  else:
+                      text += '\n' + tag + '\n'
+          p.write_text(text, encoding='utf-8')
           PY
 
       - name: Upload Pages artifact
