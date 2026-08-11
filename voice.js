@@ -112,8 +112,18 @@ async function leave(){
 }
 function toggleMute(){muted=!muted;localStream?.getAudioTracks().forEach(t=>t.enabled=!muted);return muted}
 
+let headerObserver=null;
+function watchHeader(){
+  const h=$("convo-header");if(!h||headerObserver)return;
+  // The app rebuilds #convo-header's innerHTML on every channel/DM switch
+  // (renderConvoHeader), which wipes out our injected button. Watch for
+  // that instead of relying purely on the 1s poll, so the button doesn't
+  // flicker out of existence between polls.
+  headerObserver=new MutationObserver(()=>button());
+  headerObserver.observe(h,{childList:true});
+}
 function button(){
-  style();const h=$("convo-header");if(!h)return;const c=context();const old=h.querySelector(".voice-start-btn");if(!c){old?.remove();return}
+  style();const h=$("convo-header");if(!h)return;watchHeader();const c=context();const old=h.querySelector(".voice-start-btn");if(!c){old?.remove();return}
   const key=c.type+":"+c.id;if(old&&old.dataset.voiceContext===key)return;old?.remove();
   const b=document.createElement("button");b.className="voice-start-btn";b.dataset.voiceContext=key;b.innerHTML=c.type==="channel"?"🎙️ <span>Join VC</span>":"📞 <span>Call</span>";b.title=c.type==="channel"?"Join channel voice chat":"Start a voice call";
   b.onclick=async()=>{try{const freshCtx=context();if(!freshCtx)return;if(freshCtx.type==="channel"){const cid=callId(freshCtx),r=await getDoc(callRef(cid));if(r.exists()&&r.data().active&&fresh(r.data().updatedAt))await joinCall(cid,freshCtx,r.data());else await startCall()}else await startCall()}catch(e){console.error("Voice call failed",e);toast("Could not start voice chat.")}};
