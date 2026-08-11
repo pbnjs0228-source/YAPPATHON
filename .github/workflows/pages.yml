@@ -1,0 +1,69 @@
+name: Deploy YAPPATHON to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  # GitHub's Pages API has occasionally returned certificate-chain errors
+  # from the runner. Use the runner's system CA store for Node-based actions.
+  NODE_OPTIONS: --use-system-ca
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare static site
+        run: |
+          set -euo pipefail
+          test -f index.html
+          test -f voice.js
+          touch .nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages (attempt 1)
+        id: deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v5
+        timeout-minutes: 10
+
+      - name: Retry Pages deployment
+        id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v5
+        timeout-minutes: 10
+
+      - name: Report deployment failure clearly
+        if: steps.deployment.outcome == 'failure' && steps.deployment_retry.outcome == 'failure'
+        run: |
+          echo "GitHub Pages deployment failed twice."
+          echo "The build artifact was created successfully; the failure is in the Pages deployment API."
+          exit 1
