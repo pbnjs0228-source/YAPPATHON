@@ -308,7 +308,9 @@ service cloud.firestore {
       }
     }
   }
-\n\n    // YAPPATHON VOICE CHAT RULES
+
+
+    // YAPPATHON VOICE CHAT RULES
     // WebRTC media stays peer-to-peer. Firestore stores only call state,
     // invitations, presence and signaling messages.
     match /voiceCalls/{callId} {
