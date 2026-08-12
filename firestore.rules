@@ -159,6 +159,7 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
       allow update, delete: if signedIn() && resource.data.uid == request.auth.uid;
 
+    
     // YAPPATHON VOICE CHAT RULES
     // WebRTC media stays peer-to-peer. Firestore stores only call state,
     // invitations, presence and signaling messages.
@@ -240,6 +241,7 @@ service cloud.firestore {
         allow update, delete: if false;
       }
     }
+  }
   }
   }
 }

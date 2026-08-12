@@ -3224,6 +3224,23 @@ function boot(){
   window.addEventListener("beforeunload",()=>{stopHeartbeat();stopMic()},{once:true});
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
+
+// YAPPATHON VOICE CONTEXT BRIDGE
+// Exposes read-only getters for the separate voice module without
+// leaking mutable app state into the global namespace.
+window.YappathonVoiceContext = {
+  get db(){ return db; },
+  get currentUser(){ return currentUser; },
+  get profile(){ return profile; },
+  get userCache(){ return userCache; },
+  get dmCache(){ return dmCache; },
+  get currentConvoType(){ return currentConvoType; },
+  get currentDmId(){ return currentDmId; },
+  get currentChannel(){ return currentChannel; },
+  toast
+};
+
 </script>
+<script type="module" src="./voice.js"></script>
 </body>
 </html>
