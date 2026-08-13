@@ -3332,6 +3332,7 @@ function boot(){
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
 
+
 // YAPPATHON VOICE CONTEXT BRIDGE
 // Exposes read-only getters for the separate voice module without
 // leaking mutable app state into the global namespace.
@@ -3348,9 +3349,10 @@ window.YappathonVoiceContext = {
 };
 
 </script>
+
+
+
+
 <script type="module" src="./voice.js"></script>
-
-
-
 </body>
 </html>
