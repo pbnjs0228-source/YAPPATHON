@@ -629,6 +629,30 @@
     <div class="section-label" style="margin-top:6px;">Games</div>
     <div class="games-tab" id="games-tab" role="button" tabindex="0"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M8 9h8a5 5 0 0 1 4.8 6.4l-.7 2.3a2.5 2.5 0 0 1-4.4.7L14 16H10l-1.7 2.4a2.5 2.5 0 0 1-4.4-.7l-.7-2.3A5 5 0 0 1 8 9Z"/><path d="M8 12v4M6 14h4M16.5 13.5h.01M19 15h.01"/></svg>Multiplayer Games <span class="badge-soon">Soon</span></div>
 
+    <style>
+      #enter-voice-chat-button {
+        display:flex; align-items:center; justify-content:center; gap:8px;
+        width:calc(100% - 32px); margin:10px 16px;
+        padding:10px 14px; border:1px solid var(--accent);
+        border-radius:10px; background:var(--accent-soft); color:var(--text);
+        font:700 13px/1.2 'Inter',sans-serif; cursor:pointer;
+        transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
+      }
+      #enter-voice-chat-button:hover {
+        background:var(--accent); color:var(--accent-contrast);
+        transform:translateY(-1px); box-shadow:0 6px 20px var(--shadow);
+      }
+      #enter-voice-chat-button:active { transform:translateY(0) scale(.98); }
+    </style>
+    <button id="enter-voice-chat-button" type="button" aria-label="Enter Voice Chat">
+      🎙️ ENTER VOICE CHAT
+    </button>
+    <script>
+      document.getElementById('enter-voice-chat-button')?.addEventListener('click', () => {
+        window.location.href = 'https://pbnjs0228-source.github.io/YAPPATHON-Cafe/';
+      });
+    </script>
+
     <div class="sidebar-spacer"></div>
 
     <div class="user-panel">
@@ -3243,29 +3267,7 @@ window.YappathonVoiceContext = {
 </script>
 <script type="module" src="./voice.js"></script>
 
-<style>
-  #enter-voice-chat-button {
-    display:flex; align-items:center; justify-content:center; gap:8px;
-    width:calc(100% - 32px); margin:10px 16px;
-    padding:10px 14px; border:1px solid var(--accent);
-    border-radius:10px; background:var(--accent-soft); color:var(--text);
-    font:700 13px/1.2 'Inter',sans-serif; cursor:pointer;
-    transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
-  }
-  #enter-voice-chat-button:hover {
-    background:var(--accent); color:var(--accent-contrast);
-    transform:translateY(-1px); box-shadow:0 6px 20px var(--shadow);
-  }
-  #enter-voice-chat-button:active { transform:translateY(0) scale(.98); }
-</style>
-<button id="enter-voice-chat-button" type="button" aria-label="Enter Voice Chat">
-  🎙️ ENTER VOICE CHAT
-</button>
-<script>
-  document.getElementById('enter-voice-chat-button')?.addEventListener('click', () => {
-    window.location.href = 'https://pbnjs0228-source.github.io/YAPPATHON-Cafe/';
-  });
-</script>
+
 
 </body>
 </html>
