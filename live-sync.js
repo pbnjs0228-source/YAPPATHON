@@ -2,7 +2,7 @@
   'use strict';
   const C=()=>window.YappathonVoiceContext||{};
   const FIREBASE='https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-  let fs=null,profileUnsub=null,profileUnsubUid='',callLogUnsub=null,incomingCallUnsub=null,inviteUnsubs=new Map(),started=false;
+  let fs=null,profileUnsub=null,profileUnsubUid='',callLogUnsub=null,incomingCallUnsub=null,cafeInviteUnsub=null,inviteUnsubs=new Map(),started=false;
   const loadedProfiles=new Map(),callLogs=new Map();
   async function firestore(){if(!fs)fs=await import(FIREBASE);return fs}
   function current(){return C().currentUser||null} function profile(){return C().profile||{}}
@@ -51,10 +51,42 @@
   function watchOneInvite(callId,call){const uid=current()?.uid;if(!uid||call.createdBy===uid||inviteUnsubs.has(callId))return;firestore().then(({doc,onSnapshot})=>{const unsub=onSnapshot(doc(C().db,'voiceCalls',callId,'invites',uid),s=>{if(!s.exists()){return}const inv=s.data()||{};if(inv.status==='ringing')showIncoming(callId,call,{...inv,uid});else{const el=document.getElementById('yap-incoming-call');if(el)el.hidden=true}},()=>{});inviteUnsubs.set(callId,unsub)}).catch(()=>{})}
   function watchIncomingCalls(){const c=C(),uid=current()?.uid;if(!c.db||!uid)return;firestore().then(({collection,onSnapshot})=>{incomingCallUnsub=onSnapshot(collection(c.db,'voiceCalls'),snap=>{snap.docChanges().forEach(ch=>{const d=ch.doc.data()||{},k=ch.doc.id;if(d.active===true&&Array.isArray(d.members)&&d.members.includes(uid))watchOneInvite(k,d);else if(d.active!==true){const u=inviteUnsubs.get(k);if(u){u();inviteUnsubs.delete(k)}}})})}).catch(e=>console.warn('Incoming calls listener failed',e))}
 
+  // Voice Cafe invites — same popup pattern as incoming calls above, but
+  // sourced from the top-level `cafeInvites` collection Voice Cafe writes to.
+  function cafeInviteUi(){let el=document.getElementById('yap-cafe-invite');if(el)return el;const s=document.createElement('style');s.textContent=`#yap-cafe-invite{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.58);backdrop-filter:blur(8px)}#yap-cafe-invite[hidden]{display:none!important}.yap-ci-card{width:min(430px,calc(100vw - 32px));padding:26px;border:1px solid var(--border);border-radius:20px;background:var(--bg-alt);box-shadow:0 25px 90px rgba(0,0,0,.45);text-align:center}.yap-ci-icon{width:70px;height:70px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);font-size:32px;animation:yapRingIncoming 1s ease-in-out infinite}.yap-ci-card h2{margin:8px 0;font-size:18px}.yap-ci-card p{color:var(--text-muted);margin:0}.yap-ci-actions{display:flex;justify-content:center;gap:10px;margin-top:22px}.yap-ci-actions button{border:0;border-radius:10px;padding:10px 18px;font-weight:800;cursor:pointer}.yap-ci-decline{background:var(--bg-input);color:var(--text)}.yap-ci-accept{background:var(--accent);color:var(--accent-contrast)}`;document.head.appendChild(s);el=document.createElement('div');el.id='yap-cafe-invite';el.hidden=true;el.innerHTML='<div class="yap-ci-card"><div class="yap-ci-icon">☕</div><h2 id="yap-ci-title">Voice Cafe invite</h2><p id="yap-ci-text">invited you to voice chat.</p><div class="yap-ci-actions"><button class="yap-ci-decline">Dismiss</button><button class="yap-ci-accept">Join</button></div></div>';document.body.appendChild(el);return el}
+  async function respondCafeInvite(inviteId,status){try{const{doc,updateDoc,serverTimestamp}=await firestore();await updateDoc(doc(C().db,'cafeInvites',inviteId),{status,respondedAt:serverTimestamp()});return true}catch(e){console.warn('Cafe invite response failed',e);return false}}
+  function showCafeInvite(inviteId,inv){
+    const t=inv.createdAt?.toMillis?.()||0;if(!t||Date.now()-t>60000)return; // ignore stale invites (e.g. on first load)
+    const el=cafeInviteUi();
+    document.getElementById('yap-ci-title').textContent='Voice Cafe invite';
+    document.getElementById('yap-ci-text').textContent=`${inv.fromName||'Someone'} invited you to voice chat.`;
+    el.hidden=false;
+    el.querySelector('.yap-ci-accept').onclick=async()=>{
+      el.querySelector('.yap-ci-accept').disabled=true;
+      await respondCafeInvite(inviteId,'accepted');
+      el.hidden=true;el.querySelector('.yap-ci-accept').disabled=false;
+      window.open(`https://pbnjs0228-source.github.io/YAPPATHON-Cafe/?joinTable=${encodeURIComponent(inv.tableId||'')}`,'_blank','noopener');
+    };
+    el.querySelector('.yap-ci-decline').onclick=async()=>{await respondCafeInvite(inviteId,'declined');el.hidden=true};
+  }
+  function watchCafeInvites(){
+    const c=C(),uid=current()?.uid;if(!c.db||!uid)return;
+    firestore().then(({collection,query,where,onSnapshot})=>{
+      cafeInviteUnsub=onSnapshot(query(collection(c.db,'cafeInvites'),where('toUid','==',uid)),snap=>{
+        snap.docChanges().forEach(ch=>{
+          if(ch.type!=='added')return;
+          const inv=ch.doc.data()||{};
+          if(inv.status!=='pending')return;
+          showCafeInvite(ch.doc.id,inv);
+        });
+      });
+    }).catch(e=>console.warn('Cafe invite listener failed',e));
+  }
+
   async function ensureCallLog(callId,d){const c=C(),uid=current()?.uid;if(!c.db||!uid||d.createdBy!==uid||callLogs.has(callId))return;try{const{doc,setDoc,serverTimestamp}=await firestore();const p=msgPath(d),ref=doc(c.db,...p,'call_'+callId),username=profile().username||'Someone';await setDoc(ref,{uid,username,role:profile().role||'member',photoBase64:profile().photoBase64||null,text:`${username} started a call`,imageBase64:null,mentions:[],timestamp:serverTimestamp(),callLog:true,callId},{merge:true});callLogs.set(callId,{ref,startedAt:ms(d.createdAt)||Date.now(),username})}catch(e){console.warn('Call log start failed',e)}}
   async function finishCallLog(callId,d){const st=callLogs.get(callId);if(!st)return;callLogs.delete(callId);try{const{updateDoc}=await firestore();const end=ms(d.endedAt)||ms(d.updatedAt)||Date.now();await updateDoc(st.ref,{text:`${st.username} started a call for ${durationText(Math.max(0,end-st.startedAt))}`})}catch(e){console.warn('Call log finish failed',e)}}
   function watchCallLogs(){const c=C(),uid=current()?.uid;if(!c.db||!uid)return;firestore().then(({collection,query,where,onSnapshot})=>{callLogUnsub=onSnapshot(query(collection(c.db,'voiceCalls'),where('createdBy','==',uid)),snap=>snap.docChanges().forEach(ch=>{const d=ch.doc.data()||{};if(d.active===true)ensureCallLog(ch.doc.id,d);else finishCallLog(ch.doc.id,d)}))}).catch(e=>console.warn('Call log listener failed',e))}
-  function reset(){const uid=current()?.uid||'';if(uid===reset.uid)return;reset.uid=uid;if(profileUnsub){profileUnsub();profileUnsub=null;profileUnsubUid=''}if(callLogUnsub){callLogUnsub();callLogUnsub=null}if(incomingCallUnsub){incomingCallUnsub();incomingCallUnsub=null}inviteUnsubs.forEach(u=>u());inviteUnsubs.clear();loadedProfiles.clear();callLogs.clear();if(uid){watchProfiles();watchCallLogs();watchIncomingCalls()}}
+  function reset(){const uid=current()?.uid||'';if(uid===reset.uid)return;reset.uid=uid;if(profileUnsub){profileUnsub();profileUnsub=null;profileUnsubUid=''}if(callLogUnsub){callLogUnsub();callLogUnsub=null}if(incomingCallUnsub){incomingCallUnsub();incomingCallUnsub=null}if(cafeInviteUnsub){cafeInviteUnsub();cafeInviteUnsub=null}inviteUnsubs.forEach(u=>u());inviteUnsubs.clear();loadedProfiles.clear();callLogs.clear();if(uid){watchProfiles();watchCallLogs();watchIncomingCalls();watchCafeInvites()}}
   function start(){if(started)return;started=true;reset();setInterval(reset,1000)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
