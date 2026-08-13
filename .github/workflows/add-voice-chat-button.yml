@@ -1,0 +1,72 @@
+name: Add Voice Chat button to index.html
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - '.github/workflows/add-voice-chat-button.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  ensure-voice-button:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add ENTER VOICE CHAT button if missing
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = 'id="enter-voice-chat-button"'
+          if marker in s:
+              print('Voice Chat button already present.')
+              raise SystemExit(0)
+          button = r'''
+          <style>
+            #enter-voice-chat-button {
+              display:flex; align-items:center; justify-content:center; gap:8px;
+              width:calc(100% - 32px); margin:10px 16px;
+              padding:10px 14px; border:1px solid var(--accent);
+              border-radius:10px; background:var(--accent-soft); color:var(--text);
+              font:700 13px/1.2 'Inter',sans-serif; cursor:pointer;
+              transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
+            }
+            #enter-voice-chat-button:hover {
+              background:var(--accent); color:var(--accent-contrast);
+              transform:translateY(-1px); box-shadow:0 6px 20px var(--shadow);
+            }
+            #enter-voice-chat-button:active { transform:translateY(0) scale(.98); }
+          </style>
+          <button id="enter-voice-chat-button" type="button" aria-label="Enter Voice Chat">
+            🎙️ ENTER VOICE CHAT
+          </button>
+          <script>
+            document.getElementById('enter-voice-chat-button')?.addEventListener('click', () => {
+              window.location.href = 'https://pbnjs0228-source.github.io/YAPPATHON-Cafe/';
+            });
+          </script>
+          '''
+          if '</body>' not in s.lower():
+              raise SystemExit('Could not find </body> in index.html')
+          idx = s.lower().rfind('</body>')
+          s = s[:idx] + button + '\n' + s[idx:]
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit updated index.html
+        run: |
+          if git diff --quiet -- index.html; then
+            echo 'No changes needed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Add ENTER VOICE CHAT button [skip ci]'
+          git push
