@@ -265,6 +265,12 @@
   .msg-time { font-size:11px; color: var(--text-muted); font-family:'JetBrains Mono', monospace; }
   .msg-text { font-size:14px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
   .msg-img { margin-top:6px; max-width:320px; max-height:320px; border-radius:10px; border:1px solid var(--border); cursor:zoom-in; display:block; transition: transform .18s ease, filter .18s ease; }
+  .cafe-invite-card { margin-top:6px; display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--border); border-radius:12px; background:var(--bg-input); max-width:420px; }
+  .cafe-invite-icon { font-size:22px; flex-shrink:0; width:38px; height:38px; border-radius:10px; background:var(--accent-soft); display:flex; align-items:center; justify-content:center; }
+  .cafe-invite-body { min-width:0; flex:1; }
+  .cafe-invite-title { font-size:12px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.04em; }
+  .cafe-invite-sub { font-size:13px; color:var(--text); margin-top:2px; line-height:1.4; }
+  .cafe-invite-btn { flex-shrink:0; text-decoration:none; padding:8px 14px; font-size:12.5px; white-space:nowrap; }
   .msg-img:hover { transform: scale(1.02); filter: brightness(1.05); }
   .msg-del { background:none; border:none; color:var(--text-muted); opacity:0; font-size:12px; margin-left:auto; align-self:flex-start; transition: opacity .15s ease, color .15s ease; }
   .msg-actions { position:absolute; top:6px; right:8px; display:flex; align-items:center; gap:3px; margin:0; min-height:22px; opacity:0; transition:opacity .12s ease; z-index:4; }
@@ -910,6 +916,18 @@
 <div class="mention-picker" id="mention-picker" role="listbox" aria-label="Mention a user"></div>
 
 <div id="lightbox"><img id="lightbox-img" /></div>
+
+<div class="modal-backdrop" id="cafe-invite-backdrop">
+  <div class="modal" style="max-width:380px; text-align:center;">
+    <div style="width:64px;height:64px;margin:0 auto 14px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:28px;">☕</div>
+    <h2 style="margin:0 0 8px;">Voice Cafe invite</h2>
+    <p id="cafe-invite-text" style="color:var(--text-muted); font-size:14px; margin:0;">invited you to voice chat.</p>
+    <div class="modal-actions" style="justify-content:center;">
+      <button class="btn" id="cafe-invite-dismiss">Dismiss</button>
+      <button class="btn primary" id="cafe-invite-join">Join</button>
+    </div>
+  </div>
+</div>
 <div class="toasts" id="toasts"></div>
 
 <script type="module">
@@ -1122,6 +1140,7 @@ let unsubMessages = null;
 let unsubChannels = null;
 let unsubMembers = null;
 let unsubDms = null;
+let unsubCafeInvites = null;
 const seenMentionIds = new Set();
 let initialMentionSnapshot = true;
 let pendingImage = null;   // data URL staged for next message
@@ -1269,6 +1288,7 @@ onAuthStateChanged(auth, async (user) => {
     if (unsubChannels) unsubChannels();
     if (unsubMembers) unsubMembers();
     if (unsubDms) unsubDms();
+    if (unsubCafeInvites) { unsubCafeInvites(); unsubCafeInvites = null; }
     return;
   }
   currentUser = user;
@@ -1282,6 +1302,7 @@ onAuthStateChanged(auth, async (user) => {
     listenChannels();
     listenMembers();
     listenDms();
+    watchCafeInvites();
     switchChannel('general');
     heartbeat();
     setInterval(heartbeat, 25000);
@@ -1846,6 +1867,21 @@ function renderMessage(id, m, ts, grouped) {
     img.addEventListener('click', () => { $('lightbox-img').src=img.src; $('lightbox').classList.add('open'); });
     body.appendChild(img);
   }
+  if (m.cafeInvite) {
+    const inv = m.cafeInvite;
+    const card = document.createElement('div');
+    card.className = 'cafe-invite-card';
+    const url = 'https://pbnjs0228-source.github.io/YAPPATHON-Cafe/?joinTable=' + encodeURIComponent(inv.tableId || '');
+    card.innerHTML = `
+      <div class="cafe-invite-icon">${inv.tableIcon ? inv.tableIcon : '☕'}</div>
+      <div class="cafe-invite-body">
+        <div class="cafe-invite-title">Voice Cafe invite</div>
+        <div class="cafe-invite-sub">${escapeHtml(inv.fromName || m.username || 'Someone')} is at ${escapeHtml(inv.tableName || 'a table')} — join the voice chat</div>
+      </div>
+      <a class="btn primary cafe-invite-btn" href="${url}" target="_blank" rel="noopener noreferrer">Join Table ↗</a>
+    `;
+    body.appendChild(card);
+  }
 
   const actionBar = document.createElement('div'); actionBar.className='msg-actions';
   addReactionPicker(id, m, row, actionBar);
@@ -1876,6 +1912,53 @@ $('lightbox').addEventListener('click', () => $('lightbox').classList.remove('op
 
 function escapeHtml(s) {
   return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ---------- Voice Cafe invite popup ----------
+// Watches the top-level `cafeInvites` collection (written by Voice Cafe)
+// and shows a real popup here in the chat app the instant one arrives,
+// regardless of which conversation is currently open.
+let cafeInviteActiveId = null;
+function showCafeInvitePopup(inviteId, inv) {
+  const t = inv.createdAt && inv.createdAt.toMillis ? inv.createdAt.toMillis() : 0;
+  if (!t || Date.now() - t > 60000) return; // ignore stale invites from before page load
+  cafeInviteActiveId = inviteId;
+  $('cafe-invite-text').textContent = `${inv.fromName || 'Someone'} invited you to voice chat.`;
+  $('cafe-invite-backdrop').classList.add('open');
+}
+async function respondCafeInvite(inviteId, status) {
+  try {
+    await updateDoc(doc(db, 'cafeInvites', inviteId), { status, respondedAt: serverTimestamp() });
+  } catch (e) {
+    console.warn('Cafe invite response failed:', e);
+  }
+}
+$('cafe-invite-dismiss').addEventListener('click', async () => {
+  $('cafe-invite-backdrop').classList.remove('open');
+  if (cafeInviteActiveId) await respondCafeInvite(cafeInviteActiveId, 'declined');
+  cafeInviteActiveId = null;
+});
+$('cafe-invite-join').addEventListener('click', async () => {
+  const id = cafeInviteActiveId;
+  const tableId = $('cafe-invite-backdrop').dataset.tableId || '';
+  $('cafe-invite-backdrop').classList.remove('open');
+  if (id) await respondCafeInvite(id, 'accepted');
+  cafeInviteActiveId = null;
+  window.open(`https://pbnjs0228-source.github.io/YAPPATHON-Cafe/?joinTable=${encodeURIComponent(tableId)}`, '_blank', 'noopener');
+});
+function watchCafeInvites() {
+  if (unsubCafeInvites) { unsubCafeInvites(); unsubCafeInvites = null; }
+  if (!currentUser) return;
+  const q = query(collection(db, 'cafeInvites'), where('toUid', '==', currentUser.uid));
+  unsubCafeInvites = onSnapshot(q, (snap) => {
+    snap.docChanges().forEach((ch) => {
+      if (ch.type !== 'added') return;
+      const inv = ch.doc.data() || {};
+      if (inv.status !== 'pending') return;
+      $('cafe-invite-backdrop').dataset.tableId = inv.tableId || '';
+      showCafeInvitePopup(ch.doc.id, inv);
+    });
+  }, (e) => console.warn('Cafe invite listener failed:', e));
 }
 
 // ---------- new channel ----------
