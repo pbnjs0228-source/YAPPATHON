@@ -3338,27 +3338,12 @@ function boot(){
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
 
 
-// YAPPATHON VOICE CONTEXT BRIDGE
-// Exposes read-only getters for the separate voice module without
-// leaking mutable app state into the global namespace.
-window.YappathonVoiceContext = {
-  get db(){ return db; },
-  get currentUser(){ return currentUser; },
-  get profile(){ return profile; },
-  get userCache(){ return userCache; },
-  get dmCache(){ return dmCache; },
-  get currentConvoType(){ return currentConvoType; },
-  get currentDmId(){ return currentDmId; },
-  get currentChannel(){ return currentChannel; },
-  toast
-};
-
 </script>
 
 
 
 
-<script type="module" src="./voice.js"></script>
+
 <style id="yappathon-custom-badges-css">
 .yap-custom-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;font-size:10px;line-height:1.35;font-weight:700;vertical-align:middle;border:1px solid color-mix(in srgb,var(--badge-color) 55%,transparent);background:color-mix(in srgb,var(--badge-color) 16%,transparent);color:var(--text);white-space:nowrap;box-shadow:0 0 10px color-mix(in srgb,var(--badge-color) 12%,transparent)}
 .yap-custom-badge-icon{font-size:11px;line-height:1}.yap-badge-list{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap}.yap-badge-manage{margin-top:12px}.yap-badge-grid{display:flex;flex-direction:column;gap:10px;margin-top:12px}.yap-badge-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--bg-input)}.yap-badge-preview{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}.yap-badge-row button{margin-left:auto}.yap-badge-form{display:grid;grid-template-columns:1fr 72px 52px;gap:8px}.yap-badge-form input{min-width:0;background:var(--bg-input);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:9px 10px}.yap-badge-form input:focus{outline:none;border-color:var(--accent)}.yap-badge-empty{color:var(--text-muted);font-size:12px;padding:4px 0}.yap-badge-admin-note{font-size:12px;color:var(--text-muted);margin-top:5px}
@@ -3407,6 +3392,23 @@ function addManageButton(){if(!isBadgeAdmin())return;const wrap=document.querySe
 const obs=new MutationObserver(()=>{addManageButton();refreshBadges()});obs.observe(document.body,{childList:true,subtree:true});
 onAuthStateChanged(_badgeAuth,u=>{if(!u)return;onSnapshot(doc(_badgeDb,'users',u.uid),s=>{_me=s.exists()?{...s.data(),email:u.email,uid:u.uid}:null;addManageButton()});onSnapshot(collection(_badgeDb,'users'),snap=>{_users.clear();snap.forEach(d=>_users.set(d.id,{uid:d.id,...d.data()}));refreshBadges();addManageButton()})});
 window.YappathonCustomBadges={openManager,refresh:refreshBadges};
+
+// YAPPATHON VOICE CONTEXT BRIDGE
+// Exposes read-only getters for the separate voice module without
+// leaking mutable app state into the global namespace.
+window.YappathonVoiceContext = {
+  get db(){ return db; },
+  get currentUser(){ return currentUser; },
+  get profile(){ return profile; },
+  get userCache(){ return userCache; },
+  get dmCache(){ return dmCache; },
+  get currentConvoType(){ return currentConvoType; },
+  get currentDmId(){ return currentDmId; },
+  get currentChannel(){ return currentChannel; },
+  toast
+};
+
 </script>
+<script type="module" src="./voice.js"></script>
 </body>
 </html>
