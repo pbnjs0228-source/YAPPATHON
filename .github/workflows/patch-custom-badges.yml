@@ -1,0 +1,40 @@
+name: Install custom badge UI
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-custom-badges.yml'
+      - 'index.html'
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject badge manager into index.html
+        env:
+          PATCH_B64: PLACEHOLDER_PATCH_B64
+        run: |
+          python3 - <<'PY'
+          import os, base64
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          patch=base64.b64decode(os.environ['PATCH_B64']).decode('utf-8')
+          if 'id="yappathon-custom-badge-module"' not in s:
+              marker='</body>'
+              if marker not in s:
+                  marker='</html>'
+              if marker not in s:
+                  raise SystemExit('Could not find a safe HTML insertion point')
+              s=s.replace(marker, patch+'\n'+marker, 1)
+              p.write_text(s,encoding='utf-8')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git rm -f .github/workflows/patch-custom-badges.yml
+          git commit -m 'Add admin custom badge manager to merged index.html'
+          git push
