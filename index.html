@@ -2091,6 +2091,7 @@ function openProfile(uid) {
   $('profile-bio').textContent = u.bio || '';
   $('profile-backdrop').dataset.uid = uid;
   $('profile-badges').innerHTML = badgesHtmlForUser(u, currentUser && u.uid === currentUser.uid);
+  window.__yapOriginalBadges = $('profile-badges').innerHTML;
   renderAvatar($('profile-avatar'), u);
   const cls = computeCurrentClass(u.timetable, new Date());
   const clsEl = $('profile-class');
@@ -3358,13 +3359,14 @@ window.YappathonVoiceContext = {
 
 
 <script type="module" src="./voice.js"></script>
-\n<style id="yappathon-custom-badges-css">
+<style id="yappathon-custom-badges-css">
 .yap-custom-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;font-size:10px;line-height:1.35;font-weight:700;vertical-align:middle;border:1px solid color-mix(in srgb,var(--badge-color) 55%,transparent);background:color-mix(in srgb,var(--badge-color) 16%,transparent);color:var(--text);white-space:nowrap;box-shadow:0 0 10px color-mix(in srgb,var(--badge-color) 12%,transparent)}
 .yap-custom-badge-icon{font-size:11px;line-height:1}.yap-badge-list{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap}.yap-badge-manage{margin-top:12px}.yap-badge-grid{display:flex;flex-direction:column;gap:10px;margin-top:12px}.yap-badge-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--bg-input)}.yap-badge-preview{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}.yap-badge-row button{margin-left:auto}.yap-badge-form{display:grid;grid-template-columns:1fr 72px 52px;gap:8px}.yap-badge-form input{min-width:0;background:var(--bg-input);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:9px 10px}.yap-badge-form input:focus{outline:none;border-color:var(--accent)}.yap-badge-empty{color:var(--text-muted);font-size:12px;padding:4px 0}.yap-badge-admin-note{font-size:12px;color:var(--text-muted);margin-top:5px}
 @media(max-width:600px){.yap-badge-form{grid-template-columns:1fr 58px 46px}}
-</style>\n<div class="modal-backdrop" id="yap-badge-backdrop">
+</style>
+<div class="modal-backdrop" id="yap-badge-backdrop">
   <div class="modal" style="width:min(520px,100%);">
-    <div class="modal-title">Manage badges</div>
+    <h2>Manage badges</h2>
     <div id="yap-badge-target" style="color:var(--text-muted);font-size:12px;"></div>
     <div id="yap-badge-grid" class="yap-badge-grid"></div>
     <div class="yap-badge-form">
@@ -3376,7 +3378,9 @@ window.YappathonVoiceContext = {
     <div class="modal-err" id="yap-badge-error"></div>
     <div class="modal-actions"><button class="btn" id="yap-badge-cancel">Cancel</button><button class="btn primary" id="yap-badge-add">Add badge</button></div>
   </div>
-</div>\n<script type="module" id="yappathon-inline-custom-badges">\n          // YAPPATHON INLINE CUSTOM BADGES v1
+</div>
+<script type="module" id="yappathon-inline-custom-badges">
+// YAPPATHON INLINE CUSTOM BADGES v1
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
