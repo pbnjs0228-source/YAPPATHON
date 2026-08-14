@@ -1857,6 +1857,21 @@ function renderMessage(id, m, ts, grouped) {
     const time = document.createElement('span'); time.className='msg-time';
     time.textContent = ts.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + (m.editedAt ? ' · edited' : '');
     head.append(uname);
+    if (Array.isArray(m.badges) && m.badges.length) {
+      const badgeWrap = document.createElement('span');
+      badgeWrap.className = 'yap-badge-list';
+      badgeWrap.dataset.messageBadgeList = '1';
+      m.badges.forEach(b => {
+        const color = /^#[0-9a-fA-F]{6}$/.test(b?.color || '') ? b.color : '#FF7A33';
+        const icon = (window.BADGE_ICONS && window.BADGE_ICONS[b?.icon]) || '';
+        const pill = document.createElement('span');
+        pill.className = 'yap-custom-badge';
+        pill.style.setProperty('--badge-color', color);
+        pill.innerHTML = `<span class="yap-custom-badge-icon"><svg viewBox="0 0 24 24">${icon}</svg></span>${escapeHtml(b?.name || 'Badge')}`;
+        badgeWrap.appendChild(pill);
+      });
+      head.appendChild(badgeWrap);
+    }
     head.append(time);
     body.appendChild(head);
   }
@@ -2091,7 +2106,6 @@ function openProfile(uid) {
   $('profile-bio').textContent = u.bio || '';
   $('profile-backdrop').dataset.uid = uid;
   $('profile-badges').innerHTML = badgesHtmlForUser(u, currentUser && u.uid === currentUser.uid);
-  window.__yapOriginalBadges = $('profile-badges').innerHTML;
   renderAvatar($('profile-avatar'), u);
   const cls = computeCurrentClass(u.timetable, new Date());
   const clsEl = $('profile-class');
@@ -3338,61 +3352,6 @@ function boot(){
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
 
 
-</script>
-
-
-
-
-
-<style id="yappathon-custom-badges-css">
-.yap-custom-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;font-size:10px;line-height:1.35;font-weight:700;vertical-align:middle;border:1px solid color-mix(in srgb,var(--badge-color) 55%,transparent);background:color-mix(in srgb,var(--badge-color) 16%,transparent);color:var(--text);white-space:nowrap;box-shadow:0 0 10px color-mix(in srgb,var(--badge-color) 12%,transparent)}
-.yap-custom-badge-icon{font-size:11px;line-height:1}.yap-badge-list{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap}.yap-badge-manage{margin-top:12px}.yap-badge-grid{display:flex;flex-direction:column;gap:10px;margin-top:12px}.yap-badge-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--bg-input)}.yap-badge-preview{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}.yap-badge-row button{margin-left:auto}.yap-badge-form{display:grid;grid-template-columns:1fr 72px 52px;gap:8px}.yap-badge-form input{min-width:0;background:var(--bg-input);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:9px 10px}.yap-badge-form input:focus{outline:none;border-color:var(--accent)}.yap-badge-empty{color:var(--text-muted);font-size:12px;padding:4px 0}.yap-badge-admin-note{font-size:12px;color:var(--text-muted);margin-top:5px}
-@media(max-width:600px){.yap-badge-form{grid-template-columns:1fr 58px 46px}}
-</style>
-<div class="modal-backdrop" id="yap-badge-backdrop">
-  <div class="modal" style="width:min(520px,100%);">
-    <h2>Manage badges</h2>
-    <div id="yap-badge-target" style="color:var(--text-muted);font-size:12px;"></div>
-    <div id="yap-badge-grid" class="yap-badge-grid"></div>
-    <div class="yap-badge-form">
-      <input id="yap-badge-name" maxlength="32" placeholder="Badge name" aria-label="Badge name">
-      <input id="yap-badge-icon" maxlength="4" value="⭐" placeholder="⭐" aria-label="Badge icon">
-      <input id="yap-badge-color" type="color" value="#FF7A33" aria-label="Badge colour">
-    </div>
-    <div class="yap-badge-admin-note">Icon can be any emoji or short symbol. Colour controls the badge glow.</div>
-    <div class="modal-err" id="yap-badge-error"></div>
-    <div class="modal-actions"><button class="btn" id="yap-badge-cancel">Cancel</button><button class="btn primary" id="yap-badge-add">Add badge</button></div>
-  </div>
-</div>
-<script type="module" id="yappathon-inline-custom-badges">
-// YAPPATHON INLINE CUSTOM BADGES v1
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-const _badgeConfig={apiKey:"AIzaSyD4rfKO1U_LAxKyrIrQuRXeI1saokMInhA",authDomain:"orangefox-ce8b1.firebaseapp.com",projectId:"orangefox-ce8b1",storageBucket:"orangefox-ce8b1.firebasestorage.app",messagingSenderId:"859089557525",appId:"1:859089557525:web:2852c1975458b867cc561c",measurementId:"G-LLB6S2MVB5"};
-const _badgeApp=getApps().length?getApps()[0]:initializeApp(_badgeConfig); const _badgeAuth=getAuth(_badgeApp); const _badgeDb=getFirestore(_badgeApp);
-const _esc=s=>String(s??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
-const _users=new Map(); let _me=null, _target=null;
-const $b=id=>document.getElementById(id);
-function isBadgeAdmin(){return !!(_me&&(_me.role==='admin'||_me.email==='admin@yappathon.com'));}
-function badgeHtml(b){const c=b.color||'#FF7A33';return `<span class="yap-custom-badge" style="--badge-color:${_esc(c)}"><span class="yap-custom-badge-icon">${_esc(b.icon||'⭐')}</span>${_esc(b.name||'Badge')}</span>`}
-function badgeListHtml(u){const bs=Array.isArray(u?.badges)?u.badges:[];return bs.length?`<span class="yap-badge-list">${bs.map(badgeHtml).join('')}</span>`:''}
-function refreshBadges(){
-  document.querySelectorAll('.msg-row[data-badge-uid]').forEach(row=>{const u=_users.get(row.dataset.badgeUid);const head=row.querySelector('.msg-head');if(!u||!head)return;let el=head.querySelector('.yap-badge-list');if(el)el.outerHTML=badgeListHtml(u);else{const uname=head.querySelector('.msg-uname');const h=badgeListHtml(u);if(uname&&h)uname.insertAdjacentHTML('afterend',h)}});
-  const pb=$b('profile-badges'); if(pb&&_target){pb.innerHTML=(window.__yapOriginalBadges||'')+badgeListHtml(_target)}
-}
-function openManager(uid){if(!isBadgeAdmin())return; _target=_users.get(uid);if(!_target)return; $b('yap-badge-target').textContent=`Editing badges for ${_target.username||'User'}`; renderManager();$b('yap-badge-backdrop').classList.add('open');}
-function renderManager(){const grid=$b('yap-badge-grid');const bs=Array.isArray(_target?.badges)?_target.badges:[];grid.innerHTML=bs.length?bs.map((b,i)=>`<div class="yap-badge-row"><span class="yap-badge-preview" style="--badge-color:${_esc(b.color||'#FF7A33')};background:color-mix(in srgb,var(--badge-color) 16%,transparent);border:1px solid color-mix(in srgb,var(--badge-color) 45%,transparent)">${_esc(b.icon||'⭐')} ${_esc(b.name||'Badge')}</span><button class="btn danger-ghost" data-badge-remove="${i}">Remove</button></div>`).join(''):'<div class="yap-badge-empty">No custom badges yet.</div>';grid.querySelectorAll('[data-badge-remove]').forEach(btn=>btn.onclick=()=>removeBadge(Number(btn.dataset.badgeRemove)));}
-async function removeBadge(i){const bs=[...(Array.isArray(_target.badges)?_target.badges:[])];bs.splice(i,1);await saveBadges(bs);}
-async function saveBadges(bs){const err=$b('yap-badge-error');err.textContent='';try{await updateDoc(doc(_badgeDb,'users',_target.uid),{badges:bs});_target.badges=bs;_users.set(_target.uid,_target);renderManager();refreshBadges();}catch(e){console.error(e);err.textContent=e?.code==='permission-denied'?'Only the YAPPATHON admin can manage badges.':(e?.message||'Could not save badges.');}}
-$b('yap-badge-add').onclick=async()=>{const name=$b('yap-badge-name').value.trim(),icon=$b('yap-badge-icon').value.trim()||'⭐',color=$b('yap-badge-color').value;if(!name){$b('yap-badge-error').textContent='Enter a badge name.';return}const bs=[...(Array.isArray(_target.badges)?_target.badges:[])];bs.push({id:'badge_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),name,icon:icon.slice(0,4),color});await saveBadges(bs);$b('yap-badge-name').value='';};
-$b('yap-badge-cancel').onclick=()=>{$b('yap-badge-backdrop').classList.remove('open');_target=null};
-$b('yap-badge-backdrop').addEventListener('click',e=>{if(e.target.id==='yap-badge-backdrop')$b('yap-badge-cancel').click()});
-function addManageButton(){if(!isBadgeAdmin())return;const wrap=document.querySelector('.profile-actions');if(!wrap||document.getElementById('yap-manage-badges'))return;const btn=document.createElement('button');btn.id='yap-manage-badges';btn.className='btn';btn.textContent='Manage badges';btn.onclick=()=>{const uid=$b('profile-backdrop')?.dataset.uid;if(uid)openManager(uid)};wrap.insertBefore(btn,wrap.firstChild)}
-const obs=new MutationObserver(()=>{addManageButton();refreshBadges()});obs.observe(document.body,{childList:true,subtree:true});
-onAuthStateChanged(_badgeAuth,u=>{if(!u)return;onSnapshot(doc(_badgeDb,'users',u.uid),s=>{_me=s.exists()?{...s.data(),email:u.email,uid:u.uid}:null;addManageButton()});onSnapshot(collection(_badgeDb,'users'),snap=>{_users.clear();snap.forEach(d=>_users.set(d.id,{uid:d.id,...d.data()}));refreshBadges();addManageButton()})});
-window.YappathonCustomBadges={openManager,refresh:refreshBadges};
-
 // YAPPATHON VOICE CONTEXT BRIDGE
 // Exposes read-only getters for the separate voice module without
 // leaking mutable app state into the global namespace.
@@ -3409,6 +3368,271 @@ window.YappathonVoiceContext = {
 };
 
 </script>
-<script type="module" src="./voice.js"></script>
+
+
+
+
+\n
+
+<style id="yappathon-custom-badges-v2">
+  .yap-custom-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;font-size:10px;line-height:1.35;font-weight:700;vertical-align:middle;border:1px solid color-mix(in srgb,var(--badge-color) 55%,transparent);background:color-mix(in srgb,var(--badge-color) 16%,transparent);color:var(--text);white-space:nowrap}
+  .yap-custom-badge-icon{display:inline-grid;place-items:center;width:13px;height:13px;color:var(--badge-color)}
+  .yap-custom-badge-icon svg{width:13px;height:13px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .yap-badge-list{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;margin-left:3px}
+  .yap-badge-grid{display:flex;flex-direction:column;gap:9px;margin-top:12px}
+  .yap-badge-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--bg-input)}
+  .yap-badge-row .yap-badge-preview{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}
+  .yap-badge-row button{margin-left:auto}
+  .yap-badge-form{display:grid;grid-template-columns:1fr 120px 52px;gap:8px;margin-top:12px}
+  .yap-badge-form input[type=text]{min-width:0}
+  .yap-badge-icon-picker{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:8px}
+  .yap-badge-icon-option{display:grid;place-items:center;height:38px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-muted);cursor:pointer}
+  .yap-badge-icon-option:hover{border-color:var(--accent);color:var(--accent)}
+  .yap-badge-icon-option.selected{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .yap-badge-icon-option svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .yap-badge-note{font-size:11px;color:var(--text-muted);margin-top:7px}
+  @media(max-width:600px){.yap-badge-form{grid-template-columns:1fr 52px}.yap-badge-form input[type=color]{grid-column:2}.yap-badge-icon-picker{grid-template-columns:repeat(5,1fr)}}
+</style>
+
+<div class="modal-backdrop" id="yap-badge-backdrop" role="dialog" aria-modal="true">
+  <div class="modal" style="width:min(560px,100%);max-height:calc(100dvh - 40px);overflow:auto;">
+    <h2>Manage badges</h2>
+    <div id="yap-badge-target" style="color:var(--text-muted);font-size:12px;"></div>
+    <div id="yap-badge-grid" class="yap-badge-grid"></div>
+    <label for="yap-badge-name">Badge name</label>
+    <div class="yap-badge-form">
+      <input type="text" id="yap-badge-name" maxlength="32" placeholder="e.g. VIP" />
+      <input type="color" id="yap-badge-color" value="#FF7A33" aria-label="Badge colour" />
+    </div>
+    <label>Choose a custom icon</label>
+    <div id="yap-badge-icon-picker" class="yap-badge-icon-picker"></div>
+    <div class="yap-badge-note">These are built-in SVG icons, not emoji. Pick one, then add the badge.</div>
+    <div class="modal-err" id="yap-badge-error"></div>
+    <div class="modal-actions">
+      <button class="btn" id="yap-badge-cancel" type="button">Cancel</button>
+      <button class="btn primary" id="yap-badge-add" type="button">Add badge</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const ICONS = {
+    shield:'<path d="M12 3 19 6v6c0 5-3 8.2-7 9.8C8 20.2 5 17 5 12V6l7-3Z"/><path d="m9 12 2 2 4-4"/>',
+    star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z"/>',
+    crown:'<path d="m3 7 4.5 4L12 4l4.5 7L21 7l-2 12H5L3 7Z"/><path d="M6 22h12"/>',
+    bolt:'<path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z"/>',
+    gem:'<path d="m4 9 4-5h8l4 5-8 11L4 9Z"/><path d="M4 9h16M8 4l4 5 4-5"/>',
+    flame:'<path d="M12 22c4 0 7-3 7-7 0-4-3-6-5-10-2 3-2 5-2 6-2-2-3-4-3-7-3 3-5 7-5 11 0 4 3 7 8 7Z"/>',
+    heart:'<path d="M20.8 8.7c0 5.5-8.8 10.3-8.8 10.3S3.2 14.2 3.2 8.7A4.7 4.7 0 0 1 12 6.3a4.7 4.7 0 0 1 8.8 2.4Z"/>',
+    boltShield:'<path d="M12 3 19 6v6c0 5-3 8.2-7 9.8C8 20.2 5 17 5 12V6l7-3Z"/><path d="m13 7-4 6h3l-1 4 4-6h-3l1-4Z"/>',
+    trophy:'<path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M8 6H4v2a4 4 0 0 0 4 4M16 6h4v2a4 4 0 0 1-4 4M12 13v4M8 21h8M9 17h6"/>',
+    target:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.5"/>',
+    rocket:'<path d="M14 4c3-2 6-1 6-1s1 3-1 6c-2 3-5 5-8 6l-3-3c1-3 3-6 6-8Z"/><path d="m8 13-4 1 6 6 1-4M5 19l-2 2M6 15l-3 1M9 18l-1 3"/><circle cx="16" cy="8" r="1.5"/>',
+    key:'<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l2 2M18 5l2 2"/>',
+    eye:'<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+    comet:'<path d="M14 4c4-1 6 1 6 1s2 2 1 6c-2 2-5 3-8 3l-3-3c0-3 1-5 4-7Z"/><path d="m7 17-5 5M9 20l-2 2M4 16l-2 2"/>',
+    medal:'<circle cx="12" cy="15" r="6"/><path d="m8 10-2-7h4l2 5 2-5h4l-2 7"/>',
+    lock:'<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/>',
+    boltCircle:'<circle cx="12" cy="12" r="9"/><path d="m13 5-5 8h4l-1 6 5-8h-4l1-6Z"/>',
+    infinity:'<path d="M7 16c-4 0-5-8 0-8 3 0 5 4 5 4s2 4 5 4c5 0 4-8 0-8-3 0-5 4-5 4s-2 4-5 4Z"/>',
+    puzzle:'<path d="M9 4h3v3a2 2 0 1 0 4 0V4h4v4h-3a2 2 0 1 0 0 4h3v8h-5a2 2 0 1 0-4 0H7v-5a2 2 0 1 0 0-4H4V7h5V4Z"/>'
+  };
+
+  const ctx = () => window.YappathonVoiceContext || {};
+  const $ = id => document.getElementById(id);
+  const iconSvg = key => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[key] || ICONS.star}</svg>`;
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  let users = new Map();
+  let target = null;
+  let selectedIcon = 'shield';
+
+  function isAdmin() {
+    const u = ctx().profile || {};
+    const auth = ctx().currentUser;
+    return u.role === 'admin' || auth?.email === 'admin@yappathon.com';
+  }
+
+  function badgeHtml(b) {
+    const color = /^#[0-9a-fA-F]{6}$/.test(b?.color || '') ? b.color : '#FF7A33';
+    const icon = ICONS[b?.icon] ? b.icon : 'star';
+    return `<span class="yap-custom-badge" style="--badge-color:${color}"><span class="yap-custom-badge-icon">${iconSvg(icon)}</span>${esc(b?.name || 'Badge')}</span>`;
+  }
+
+  function customBadges(u) {
+    const bs = Array.isArray(u?.badges) ? u.badges : [];
+    return bs.length ? `<span class="yap-badge-list">${bs.map(badgeHtml).join('')}</span>` : '';
+  }
+
+  function refreshBadges() {
+    document.querySelectorAll('.msg-row[data-badge-uid]').forEach(row => {
+      const u = users.get(row.dataset.badgeUid);
+      const head = row.querySelector('.msg-head');
+      if (!u || !head) return;
+      const old = head.querySelector('.yap-badge-list');
+      const h = customBadges(u);
+      if (old) old.outerHTML = h;
+      else if (h) head.querySelector('.msg-uname')?.insertAdjacentHTML('afterend', h);
+    });
+    const profileBadges = $('profile-badges');
+    const uid = $('profile-backdrop')?.dataset.uid;
+    if (profileBadges && uid && users.has(uid)) {
+      const u = users.get(uid);
+      const existingAdmin = u.role === 'admin' ? badgePillHtmlSafe('admin', 'Admin', 'tier-admin') : '';
+      profileBadges.innerHTML = existingAdmin + customBadges(u);
+    }
+  }
+
+  function badgePillHtmlSafe(iconKey, label, cls) {
+    const path = (window.BADGE_ICONS && window.BADGE_ICONS[iconKey]) || '';
+    return `<span class="profile-badge ${cls || ''}"><span class="b-icon"><svg viewBox="0 0 24 24">${path}</svg></span>${esc(label)}</span>`;
+  }
+
+  function renderPicker() {
+    const wrap = $('yap-badge-icon-picker');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    Object.keys(ICONS).forEach(key => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'yap-badge-icon-option' + (key === selectedIcon ? ' selected' : '');
+      b.title = key;
+      b.innerHTML = iconSvg(key);
+      b.onclick = () => {
+        selectedIcon = key;
+        renderPicker();
+      };
+      wrap.appendChild(b);
+    });
+  }
+
+  function renderManager() {
+    const grid = $('yap-badge-grid');
+    if (!grid || !target) return;
+    const bs = Array.isArray(target.badges) ? target.badges : [];
+    grid.innerHTML = bs.length ? bs.map((b, i) => {
+      const color = /^#[0-9a-fA-F]{6}$/.test(b?.color || '') ? b.color : '#FF7A33';
+      return `<div class="yap-badge-row">
+        <span class="yap-badge-preview" style="--badge-color:${color};background:color-mix(in srgb,var(--badge-color) 16%,transparent);border:1px solid color-mix(in srgb,var(--badge-color) 45%,transparent)">
+          <span class="yap-custom-badge-icon">${iconSvg(ICONS[b?.icon] ? b.icon : 'star')}</span>${esc(b?.name || 'Badge')}
+        </span>
+        <button class="btn danger-ghost" type="button" data-remove-badge="${i}">Remove</button>
+      </div>`;
+    }).join('') : '<div class="yap-badge-note">No custom badges yet.</div>';
+
+    grid.querySelectorAll('[data-remove-badge]').forEach(btn => {
+      btn.onclick = async () => {
+        const bs2 = [...(Array.isArray(target.badges) ? target.badges : [])];
+        bs2.splice(Number(btn.dataset.removeBadge), 1);
+        await saveBadges(bs2);
+      };
+    });
+  }
+
+  async function saveBadges(badges) {
+    const err = $('yap-badge-error');
+    err.style.display = 'none';
+    const firestore = ctx().db;
+    if (!firestore || !target) return;
+    try {
+      const { updateDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+      await updateDoc(doc(firestore, 'users', target.uid), { badges });
+      target.badges = badges;
+      users.set(target.uid, target);
+      renderManager();
+      refreshBadges();
+    } catch (e) {
+      console.error('Badge save failed:', e);
+      err.textContent = e?.code === 'permission-denied'
+        ? 'Firestore rejected this badge change. Make sure the updated rules are deployed.'
+        : 'Could not save badges.';
+      err.style.display = 'block';
+    }
+  }
+
+  function openManager(uid) {
+    if (!isAdmin()) return;
+    target = users.get(uid);
+    if (!target) return;
+    $('yap-badge-target').textContent = `Editing badges for ${target.username || 'User'}`;
+    $('yap-badge-error').style.display = 'none';
+    $('yap-badge-name').value = '';
+    $('yap-badge-color').value = '#FF7A33';
+    selectedIcon = 'shield';
+    renderPicker();
+    renderManager();
+    $('yap-badge-backdrop').classList.add('open');
+  }
+
+  function installButton() {
+    if (!isAdmin()) return;
+    const actions = $('profile-backdrop')?.querySelector('.profile-actions');
+    if (!actions || $('yap-manage-badges')) return;
+    const btn = document.createElement('button');
+    btn.id = 'yap-manage-badges';
+    btn.type = 'button';
+    btn.className = 'btn';
+    btn.textContent = 'Manage badges';
+    btn.onclick = () => {
+      const uid = $('profile-backdrop').dataset.uid;
+      if (uid) openManager(uid);
+    };
+    actions.insertBefore(btn, actions.firstChild);
+  }
+
+  $('yap-badge-add').onclick = async () => {
+    if (!target) return;
+    const name = $('yap-badge-name').value.trim();
+    const color = $('yap-badge-color').value;
+    const err = $('yap-badge-error');
+    if (!name) { err.textContent = 'Enter a badge name.'; err.style.display = 'block'; return; }
+    const badges = [...(Array.isArray(target.badges) ? target.badges : [])];
+    badges.push({
+      id: 'badge_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      name: name.slice(0, 32),
+      icon: selectedIcon,
+      color: /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#FF7A33'
+    });
+    await saveBadges(badges);
+    $('yap-badge-name').value = '';
+  };
+
+  $('yap-badge-cancel').onclick = () => {
+    $('yap-badge-backdrop').classList.remove('open');
+    target = null;
+  };
+  $('yap-badge-backdrop').addEventListener('click', e => {
+    if (e.target.id === 'yap-badge-backdrop') $('yap-badge-cancel').click();
+  });
+
+  // Reuse the app's existing user listener instead of starting a second Firebase
+  // app/auth listener. This avoids the freeze caused by the previous patch.
+  const observer = new MutationObserver(() => installButton());
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  let lastUsersVersion = '';
+  function syncFromContext() {
+    const cache = ctx().userCache || {};
+    const entries = Object.entries(cache);
+    const version = entries.map(([id,u]) => `${id}:${u?.username||''}:${(u?.badges||[]).length}:${u?.role||''}`).join('|');
+    if (version !== lastUsersVersion) {
+      lastUsersVersion = version;
+      users = new Map(entries.map(([id,u]) => [id, {uid:id, ...u}]));
+      refreshBadges();
+    }
+    installButton();
+  }
+
+  window.BADGE_ICONS = ICONS;
+  window.YappathonCustomBadges = { openManager, refresh: refreshBadges };
+  renderPicker();
+  setInterval(syncFromContext, 1500);
+  setTimeout(syncFromContext, 500);
+})();
+</script>
+
 </body>
 </html>
