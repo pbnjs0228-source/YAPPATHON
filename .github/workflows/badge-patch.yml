@@ -1,0 +1,164 @@
+name: Temporary badge patch
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[badge-patch]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch merged index.html
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          css = r'''
+  /* ---------- Admin custom badge manager ---------- */
+  .admin-badge-manager{display:none;position:fixed;inset:0;z-index:1500;background:rgba(0,0,0,.62);align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(8px)}
+  .admin-badge-manager.open{display:flex}
+  .admin-badge-card{width:min(520px,100%);max-height:calc(100dvh - 36px);overflow:auto;background:var(--bg-elevated);border:1px solid var(--border);border-radius:18px;padding:22px;box-shadow:0 28px 90px var(--shadow);animation:scaleIn .2s cubic-bezier(.22,1,.36,1) both}
+  .admin-badge-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+  .admin-badge-head h2{margin:0;font-size:19px}
+  .admin-badge-target{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:12px;margin-bottom:16px}
+  .admin-badge-target img{width:38px;height:38px;border-radius:50%}
+  .admin-badge-target strong{font-size:14px}
+  .admin-badge-target span{display:block;color:var(--text-muted);font-size:11px;margin-top:2px}
+  .admin-badge-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .admin-badge-form .full{grid-column:1/-1}
+  .admin-badge-form label{display:flex;flex-direction:column;gap:6px;color:var(--text-muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+  .admin-badge-form input{width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:10px 11px;border-radius:9px;font:inherit;font-size:13px}
+  .admin-badge-form input:focus{outline:none;border-color:var(--accent)}
+  .admin-badge-colour{height:40px;padding:4px!important}
+  .admin-badge-list{display:flex;flex-direction:column;gap:7px;margin-top:16px}
+  .admin-badge-row{display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px}
+  .admin-badge-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid currentColor}
+  .admin-badge-row .admin-badge-pill{flex:1;min-width:0}
+  .admin-badge-row .admin-badge-pill span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .admin-badge-remove{border:0;background:transparent;color:var(--danger);font-size:12px;font-weight:700;padding:5px 7px;border-radius:7px;cursor:pointer}
+  .admin-badge-remove:hover{background:color-mix(in srgb,var(--danger) 12%,transparent)}
+  .admin-badge-empty{color:var(--text-muted);font-size:12px;padding:10px 0}
+  .live-badges{display:inline-flex;align-items:center;gap:3px;margin-left:5px;vertical-align:middle;flex-wrap:wrap}
+  .live-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:999px;font-size:10px;font-weight:800;line-height:1;border:1px solid currentColor;white-space:nowrap}
+  .live-badge-icon{font-size:11px;line-height:1}
+  #ctx-manage-badges{display:none}
+  @media(max-width:600px){.admin-badge-form{grid-template-columns:1fr}.admin-badge-form .full{grid-column:auto}}
+'''
+          if '/* ---------- Admin custom badge manager ---------- */' not in s:
+              s=s.replace('</style>',css+'\n</style>',1)
+          html=r'''
+<div class="admin-badge-manager" id="admin-badge-manager" aria-hidden="true">
+  <div class="admin-badge-card" role="dialog" aria-modal="true" aria-labelledby="admin-badge-title">
+    <div class="admin-badge-head"><h2 id="admin-badge-title">Manage badges</h2><button class="icon-btn" id="admin-badge-close" type="button" aria-label="Close">✕</button></div>
+    <div class="admin-badge-target"><img id="admin-badge-target-avatar" alt=""><div><strong id="admin-badge-target-name"></strong><span id="admin-badge-target-uid"></span></div></div>
+    <div class="admin-badge-form">
+      <label>Badge name<input id="admin-badge-name" maxlength="32" placeholder="e.g. Bug Hunter"></label>
+      <label>Icon / emoji<input id="admin-badge-icon" maxlength="8" placeholder="🏆"></label>
+      <label>Colour<input class="admin-badge-colour" id="admin-badge-colour" type="color" value="#8b5cf6"></label>
+      <label>Preview<div id="admin-badge-preview" class="admin-badge-pill" style="color:#8b5cf6;width:max-content;max-width:100%;"><span>🏆</span><span>Badge</span></div></label>
+    </div>
+    <div class="modal-err" id="admin-badge-error" style="display:none"></div>
+    <div class="admin-badge-list" id="admin-badge-list"></div>
+    <div class="modal-actions"><button class="btn" id="admin-badge-cancel" type="button">Cancel</button><button class="btn primary" id="admin-badge-add" type="button">Give badge</button></div>
+  </div>
+</div>
+'''
+          if 'id="admin-badge-manager"' not in s:
+              s=s.replace('<div class="toasts" id="toasts"></div>', '<div class="toasts" id="toasts"></div>\n'+html, 1)
+          marker='''<button id="ctx-create-dm"'''
+          if 'id="ctx-manage-badges"' not in s and marker in s:
+              start=s.index(marker)
+              end=s.index('</button>',start)+len('</button>')
+              s=s[:end]+'\n  <button id="ctx-manage-badges"><svg class="ui-icon" style="display:inline-block;vertical-align:-3px;margin-right:7px" viewBox="0 0 24 24"><path d="m12 3 2.2 4.5 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.5 5-.7L12 3Z"/></svg>Manage badges</button>'+s[end:]
+          js=r'''
+
+// ---------- Admin custom badges patch ----------
+(function(){
+  const manager=$('admin-badge-manager');
+  if(!manager) return;
+  let badgeTargetUid=null;
+  const safeColor=v=>/^#[0-9a-fA-F]{6}$/.test(v||'')?v:'#8b5cf6';
+  function badgeListFor(u){ return Array.isArray(u&&u.badges)?u.badges:[]; }
+  function liveBadgeHtml(b){
+    const c=safeColor(b.color);
+    return `<span class="live-badge" style="color:${c};background:${c}18;border-color:${c}"><span class="live-badge-icon">${escapeHtml(b.icon||'🏅')}</span><span>${escapeHtml(b.name||'Badge')}</span></span>`;
+  }
+  function refreshRenderedBadges(){
+    document.querySelectorAll('.msg-row[data-badge-uid]').forEach(row=>{
+      const uid=row.dataset.badgeUid; const head=row.querySelector('.msg-head'); if(!head) return;
+      let wrap=head.querySelector('.live-badges'); if(!wrap){wrap=document.createElement('span');wrap.className='live-badges';head.appendChild(wrap)}
+      wrap.innerHTML=badgeListFor(userCache[uid]).map(liveBadgeHtml).join('');
+      if(!wrap.innerHTML) wrap.remove();
+    });
+    document.querySelectorAll('.member-row').forEach(row=>{
+      const name=row.querySelector('.member-name'); if(!name) return;
+      const uid=row.querySelector('img.avatar')?.closest('.member-row')?.dataset?.uid;
+      if(!uid) return;
+      let wrap=name.querySelector('.live-badges'); if(!wrap){wrap=document.createElement('span');wrap.className='live-badges';name.appendChild(wrap)}
+      wrap.innerHTML=badgeListFor(userCache[uid]).map(liveBadgeHtml).join(''); if(!wrap.innerHTML) wrap.remove();
+    });
+  }
+  function renderList(u){
+    const list=$('admin-badge-list'); list.innerHTML=''; const badges=badgeListFor(u);
+    if(!badges.length){list.innerHTML='<div class="admin-badge-empty">No custom badges yet.</div>';return}
+    badges.forEach((b,i)=>{const row=document.createElement('div');row.className='admin-badge-row';row.innerHTML=`<span class="admin-badge-pill" style="color:${safeColor(b.color)};background:${safeColor(b.color)}18"><span>${escapeHtml(b.icon||'🏅')}</span><span>${escapeHtml(b.name||'Badge')}</span></span><button class="admin-badge-remove" type="button">Remove</button>`;row.querySelector('button').addEventListener('click',async()=>{try{const u2=userCache[badgeTargetUid];const next=badgeListFor(u2).filter((_,j)=>j!==i);await updateDoc(doc(db,'users',badgeTargetUid),{badges:next});toast('Badge removed.','info');}catch(e){toast(e&&e.code==='permission-denied'?'You do not have permission to manage badges.':"Couldn't remove that badge.");}});list.appendChild(row)});
+  }
+  function open(uid){
+    if(!profile||profile.role!=='admin'||uid===profile.uid) return;
+    const u=userCache[uid]; if(!u) return; badgeTargetUid=uid;
+    $('admin-badge-target-name').textContent=u.username||'Member'; $('admin-badge-target-uid').textContent=uid;
+    renderAvatar($('admin-badge-target-avatar'),u); renderList(u);
+    $('admin-badge-name').value=''; $('admin-badge-icon').value=''; $('admin-badge-colour').value='#8b5cf6'; updatePreview(); $('admin-badge-error').style.display='none';
+    manager.classList.add('open'); manager.setAttribute('aria-hidden','false'); $('admin-badge-name').focus();
+  }
+  function close(){manager.classList.remove('open');manager.setAttribute('aria-hidden','true');badgeTargetUid=null}
+  function updatePreview(){const n=$('admin-badge-name').value.trim()||'Badge',i=$('admin-badge-icon').value.trim()||'🏅',c=safeColor($('admin-badge-colour').value);const p=$('admin-badge-preview');p.style.color=c;p.style.background=c+'18';p.innerHTML=`<span>${escapeHtml(i)}</span><span>${escapeHtml(n)}</span>`}
+  $('admin-badge-name').addEventListener('input',updatePreview);$('admin-badge-icon').addEventListener('input',updatePreview);$('admin-badge-colour').addEventListener('input',updatePreview);
+  $('admin-badge-close').addEventListener('click',close);$('admin-badge-cancel').addEventListener('click',close);manager.addEventListener('click',e=>{if(e.target===manager)close()});
+  $('admin-badge-add').addEventListener('click',async()=>{
+    const name=$('admin-badge-name').value.trim(),icon=$('admin-badge-icon').value.trim()||'🏅',color=safeColor($('admin-badge-colour').value),err=$('admin-badge-error');
+    if(!badgeTargetUid||!name){err.textContent='Enter a badge name.';err.style.display='block';return}
+    try{const u=userCache[badgeTargetUid];const badges=badgeListFor(u).slice();badges.push({id:'badge_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),name,icon,color,createdAt:Date.now(),createdBy:profile.uid});await updateDoc(doc(db,'users',badgeTargetUid),{badges});toast(`Gave ${u.username} the ${name} badge.`,'info');$('admin-badge-name').value='';$('admin-badge-icon').value='';renderList({...u,badges});}catch(e){console.error(e);err.textContent=e&&e.code==='permission-denied'?'Firestore denied this badge update. Deploy rules allowing admins to update users badges.':(e.message||"Couldn't give that badge.");err.style.display='block'}
+  });
+  const oldOpen=openProfile;
+  window.__openBadgeManager=open;
+  $('ctx-manage-badges')?.addEventListener('click',()=>{if(ctxTargetUid)open(ctxTargetUid);closeMemberContextMenu()});
+  const originalOpenMemberContextMenu=openMemberContextMenu;
+  // Add uid metadata to rows so live badge rendering can also decorate member names.
+  const observer=new MutationObserver(()=>refreshRenderedBadges());
+  observer.observe($('messages'),{childList:true,subtree:true});
+  setInterval(refreshRenderedBadges,1500);
+  const originalRenderMembers=renderMembers;
+  window.__badgePatchReady=true;
+  // Existing context-menu opener is amended at the DOM level below.
+  const origCtx=window.openMemberContextMenu;
+  // The function is lexical, so the click handler above uses the existing ctxTargetUid.
+  const oldRowAppender=renderMembers;
+  // Add a small hook by observing member-list rows and mapping usernames to cached UIDs.
+  const memberObserver=new MutationObserver(()=>{
+    $('member-list').querySelectorAll('.member-row').forEach(row=>{
+      if(row.dataset.uid) return;
+      const n=row.querySelector('.member-name'); if(!n)return;
+      const clean=n.textContent.replace(/\s*♛\s*$/,'').trim(); const u=Object.values(userCache).find(x=>x.username===clean); if(u)row.dataset.uid=u.uid;
+    });
+    refreshRenderedBadges();
+  });
+  memberObserver.observe($('member-list'),{childList:true,subtree:true});
+})();
+'''
+          if 'Admin custom badges patch' not in s:
+              pos=s.rfind('</script>')
+              if pos<0: raise SystemExit('script close not found')
+              s=s[:pos]+js+s[pos:]
+          p.write_text(s,encoding='utf-8')
+      - name: Commit patched HTML
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'feat: add admin custom badges [badge-patch]'
+          git push
