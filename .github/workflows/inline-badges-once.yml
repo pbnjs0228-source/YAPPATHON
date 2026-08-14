@@ -1,0 +1,93 @@
+name: install inline badge manager
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  install:
+    if: ${{ !contains(github.event.head_commit.message, '[skip inline badges]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch index.html
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          marker='<!-- YAPPATHON INLINE CUSTOM BADGES v1 -->'
+          if marker in s:
+              print('Badge patch already present')
+              raise SystemExit(0)
+          css=r'''\n<style id="yappathon-custom-badges-css">
+          .yap-custom-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;font-size:10px;line-height:1.35;font-weight:700;vertical-align:middle;border:1px solid color-mix(in srgb,var(--badge-color) 55%,transparent);background:color-mix(in srgb,var(--badge-color) 16%,transparent);color:var(--text);white-space:nowrap;box-shadow:0 0 10px color-mix(in srgb,var(--badge-color) 12%,transparent)}
+          .yap-custom-badge-icon{font-size:11px;line-height:1}.yap-badge-list{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap}.yap-badge-manage{margin-top:12px}.yap-badge-grid{display:flex;flex-direction:column;gap:10px;margin-top:12px}.yap-badge-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--bg-input)}.yap-badge-preview{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}.yap-badge-row button{margin-left:auto}.yap-badge-form{display:grid;grid-template-columns:1fr 72px 52px;gap:8px}.yap-badge-form input{min-width:0;background:var(--bg-input);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:9px 10px}.yap-badge-form input:focus{outline:none;border-color:var(--accent)}.yap-badge-empty{color:var(--text-muted);font-size:12px;padding:4px 0}.yap-badge-admin-note{font-size:12px;color:var(--text-muted);margin-top:5px}
+          @media(max-width:600px){.yap-badge-form{grid-template-columns:1fr 58px 46px}}
+          </style>'''
+          html=r'''\n<div class="modal-backdrop" id="yap-badge-backdrop">
+            <div class="modal" style="width:min(520px,100%);">
+              <div class="modal-title">Manage badges</div>
+              <div id="yap-badge-target" style="color:var(--text-muted);font-size:12px;"></div>
+              <div id="yap-badge-grid" class="yap-badge-grid"></div>
+              <div class="yap-badge-form">
+                <input id="yap-badge-name" maxlength="32" placeholder="Badge name" aria-label="Badge name">
+                <input id="yap-badge-icon" maxlength="4" value="⭐" placeholder="⭐" aria-label="Badge icon">
+                <input id="yap-badge-color" type="color" value="#FF7A33" aria-label="Badge colour">
+              </div>
+              <div class="yap-badge-admin-note">Icon can be any emoji or short symbol. Colour controls the badge glow.</div>
+              <div class="modal-err" id="yap-badge-error"></div>
+              <div class="modal-actions"><button class="btn" id="yap-badge-cancel">Cancel</button><button class="btn primary" id="yap-badge-add">Add badge</button></div>
+            </div>
+          </div>'''
+          js=r'''\n<script type="module" id="yappathon-inline-custom-badges">\n          // YAPPATHON INLINE CUSTOM BADGES v1
+          import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+          import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+          import { getFirestore, collection, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+          const _badgeConfig={apiKey:"AIzaSyD4rfKO1U_LAxKyrIrQuRXeI1saokMInhA",authDomain:"orangefox-ce8b1.firebaseapp.com",projectId:"orangefox-ce8b1",storageBucket:"orangefox-ce8b1.firebasestorage.app",messagingSenderId:"859089557525",appId:"1:859089557525:web:2852c1975458b867cc561c",measurementId:"G-LLB6S2MVB5"};
+          const _badgeApp=getApps().length?getApps()[0]:initializeApp(_badgeConfig); const _badgeAuth=getAuth(_badgeApp); const _badgeDb=getFirestore(_badgeApp);
+          const _esc=s=>String(s??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
+          const _users=new Map(); let _me=null, _target=null;
+          const $b=id=>document.getElementById(id);
+          function isBadgeAdmin(){return !!(_me&&(_me.role==='admin'||_me.email==='admin@yappathon.com'));}
+          function badgeHtml(b){const c=b.color||'#FF7A33';return `<span class="yap-custom-badge" style="--badge-color:${_esc(c)}"><span class="yap-custom-badge-icon">${_esc(b.icon||'⭐')}</span>${_esc(b.name||'Badge')}</span>`}
+          function badgeListHtml(u){const bs=Array.isArray(u?.badges)?u.badges:[];return bs.length?`<span class="yap-badge-list">${bs.map(badgeHtml).join('')}</span>`:''}
+          function refreshBadges(){
+            document.querySelectorAll('.msg-row[data-badge-uid]').forEach(row=>{const u=_users.get(row.dataset.badgeUid);const head=row.querySelector('.msg-head');if(!u||!head)return;let el=head.querySelector('.yap-badge-list');if(el)el.outerHTML=badgeListHtml(u);else{const uname=head.querySelector('.msg-uname');const h=badgeListHtml(u);if(uname&&h)uname.insertAdjacentHTML('afterend',h)}});
+            const pb=$b('profile-badges'); if(pb&&_target){pb.innerHTML=(window.__yapOriginalBadges||'')+badgeListHtml(_target)}
+          }
+          function openManager(uid){if(!isBadgeAdmin())return; _target=_users.get(uid);if(!_target)return; $b('yap-badge-target').textContent=`Editing badges for ${_target.username||'User'}`; renderManager();$b('yap-badge-backdrop').classList.add('open');}
+          function renderManager(){const grid=$b('yap-badge-grid');const bs=Array.isArray(_target?.badges)?_target.badges:[];grid.innerHTML=bs.length?bs.map((b,i)=>`<div class="yap-badge-row"><span class="yap-badge-preview" style="--badge-color:${_esc(b.color||'#FF7A33')};background:color-mix(in srgb,var(--badge-color) 16%,transparent);border:1px solid color-mix(in srgb,var(--badge-color) 45%,transparent)">${_esc(b.icon||'⭐')} ${_esc(b.name||'Badge')}</span><button class="btn danger-ghost" data-badge-remove="${i}">Remove</button></div>`).join(''):'<div class="yap-badge-empty">No custom badges yet.</div>';grid.querySelectorAll('[data-badge-remove]').forEach(btn=>btn.onclick=()=>removeBadge(Number(btn.dataset.badgeRemove)));}
+          async function removeBadge(i){const bs=[...(Array.isArray(_target.badges)?_target.badges:[])];bs.splice(i,1);await saveBadges(bs);}
+          async function saveBadges(bs){const err=$b('yap-badge-error');err.textContent='';try{await updateDoc(doc(_badgeDb,'users',_target.uid),{badges:bs});_target.badges=bs;_users.set(_target.uid,_target);renderManager();refreshBadges();}catch(e){console.error(e);err.textContent=e?.code==='permission-denied'?'Only the YAPPATHON admin can manage badges.':(e?.message||'Could not save badges.');}}
+          $b('yap-badge-add').onclick=async()=>{const name=$b('yap-badge-name').value.trim(),icon=$b('yap-badge-icon').value.trim()||'⭐',color=$b('yap-badge-color').value;if(!name){$b('yap-badge-error').textContent='Enter a badge name.';return}const bs=[...(Array.isArray(_target.badges)?_target.badges:[])];bs.push({id:'badge_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),name,icon:icon.slice(0,4),color});await saveBadges(bs);$b('yap-badge-name').value='';};
+          $b('yap-badge-cancel').onclick=()=>{$b('yap-badge-backdrop').classList.remove('open');_target=null};
+          $b('yap-badge-backdrop').addEventListener('click',e=>{if(e.target.id==='yap-badge-backdrop')$b('yap-badge-cancel').click()});
+          function addManageButton(){if(!isBadgeAdmin())return;const wrap=document.querySelector('.profile-actions');if(!wrap||document.getElementById('yap-manage-badges'))return;const btn=document.createElement('button');btn.id='yap-manage-badges';btn.className='btn';btn.textContent='Manage badges';btn.onclick=()=>{const uid=$b('profile-backdrop')?.dataset.uid;if(uid)openManager(uid)};wrap.insertBefore(btn,wrap.firstChild)}
+          const obs=new MutationObserver(()=>{addManageButton();refreshBadges()});obs.observe(document.body,{childList:true,subtree:true});
+          onAuthStateChanged(_badgeAuth,u=>{if(!u)return;onSnapshot(doc(_badgeDb,'users',u.uid),s=>{_me=s.exists()?{...s.data(),email:u.email,uid:u.uid}:null;addManageButton()});onSnapshot(collection(_badgeDb,'users'),snap=>{_users.clear();snap.forEach(d=>_users.set(d.id,{uid:d.id,...d.data()}));refreshBadges();addManageButton()})});
+          window.YappathonCustomBadges={openManager,refresh:refreshBadges};
+          </script>'''
+          old="row.className = 'msg-row' + (grouped ? ' grouped' : '');"
+          if old not in s: raise SystemExit('renderMessage marker not found')
+          s=s.replace(old,old+"\n  row.dataset.badgeUid = m.uid || '';",1)
+          old2="head.append(uname, time);"
+          if old2 not in s: raise SystemExit('message head marker not found')
+          s=s.replace(old2,"head.append(uname);\n    head.append(time);",1)
+          old3="$('profile-badges').innerHTML = badgesHtmlForUser(u, currentUser && u.uid === currentUser.uid);"
+          if old3 not in s: raise SystemExit('profile marker not found')
+          s=s.replace(old3,"$('profile-backdrop').dataset.uid = uid;\n  $('profile-badges').innerHTML = badgesHtmlForUser(u, currentUser && u.uid === currentUser.uid);",1)
+          old4="const count = isSelf\n    ? unlockedSecrets.size"
+          if old4 not in s: raise SystemExit('badge helper marker not found')
+          s=s.replace(old4,"if(Array.isArray(u.badges) && u.badges.length) html += '<span class=\"yap-badge-list\">'+u.badges.map(b=>`<span class=\"yap-custom-badge\" style=\"--badge-color:${b.color||'#FF7A33'}\"><span class=\"yap-custom-badge-icon\">${escapeHtml(b.icon||'⭐')}</span>${escapeHtml(b.name||'Badge')}</span>`).join('')+'</span>';\n  const count = isSelf\n    ? unlockedSecrets.size",1)
+          s=s.replace('</body>',css+html+js+'\n</body>',1)
+          p.write_text(s)
+          PY
+      - name: Commit inline badge manager
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Add custom admin badges inline [skip inline badges]"
+          git push
