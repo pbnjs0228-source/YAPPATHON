@@ -1862,13 +1862,10 @@ function renderMessage(id, m, ts, grouped) {
       badgeWrap.className = 'yap-badge-list';
       badgeWrap.dataset.messageBadgeList = '1';
       m.badges.forEach(b => {
-        const color = /^#[0-9a-fA-F]{6}$/.test(b?.color || '') ? b.color : '#FF7A33';
-        const icon = (window.BADGE_ICONS && window.BADGE_ICONS[b?.icon]) || '';
-        const pill = document.createElement('span');
-        pill.className = 'yap-custom-badge';
-        pill.style.setProperty('--badge-color', color);
-        pill.innerHTML = `<span class="yap-custom-badge-icon"><svg viewBox="0 0 24 24">${icon}</svg></span>${escapeHtml(b?.name || 'Badge')}`;
-        badgeWrap.appendChild(pill);
+        const temp = document.createElement('template');
+        temp.innerHTML = customBadgeHtml(b);
+        const pill = temp.content.firstElementChild;
+        if (pill) badgeWrap.appendChild(pill);
       });
       head.appendChild(badgeWrap);
     }
@@ -2688,11 +2685,57 @@ function highestSecretBadge(count){
 function badgePillHtml(iconKey, label, extraClass){
   return `<span class="profile-badge ${extraClass||''}"><span class="b-icon">${badgeIconSvg(iconKey)}</span>${escapeHtml(label)}</span>`;
 }
+// Custom badge icons are rendered from the custom SVG collection. Keep this
+// separate from BADGE_ICONS so built-in achievement icons can never be lost.
+const ICONS_FOR_RENDER = {
+  shield:'<path d="M12 3 19 6v6c0 5-3 8.2-7 9.8C8 20.2 5 17 5 12V6l7-3Z"/><path d="m9 12 2 2 4-4"/>',
+  star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z"/>',
+  crown:'<path d="m3 7 4.5 4L12 4l4.5 7L21 7l-2 12H5L3 7Z"/><path d="M6 22h12"/>',
+  bolt:'<path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z"/>',
+  gem:'<path d="m4 9 4-5h8l4 5-8 11L4 9Z"/><path d="M4 9h16M8 4l4 5 4-5"/>',
+  flame:'<path d="M12 22c4 0 7-3 7-7 0-4-3-6-5-10-2 3-2 5-2 6-2-2-3-4-3-7-3 3-5 7-5 11 0 4 3 7 8 7Z"/>',
+  heart:'<path d="M20.8 8.7c0 5.5-8.8 10.3-8.8 10.3S3.2 14.2 3.2 8.7A4.7 4.7 0 0 1 12 6.3a4.7 4.7 0 0 1 8.8 2.4Z"/>',
+  boltShield:'<path d="M12 3 19 6v6c0 5-3 8.2-7 9.8C8 20.2 5 17 5 12V6l7-3Z"/><path d="m13 7-4 6h3l-1 4 4-6h-3l1-4Z"/>',
+  trophy:'<path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M8 6H4v2a4 4 0 0 0 4 4M16 6h4v2a4 4 0 0 1-4 4M12 13v4M8 21h8M9 17h6"/>',
+  target:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.5"/>',
+  rocket:'<path d="M14 4c3-2 6-1 6-1s1 3-1 6c-2 3-5 5-8 6l-3-3c1-3 3-6 6-8Z"/><path d="m8 13-4 1 6 6 1-4M5 19l-2 2M6 15l-3 1M9 18l-1 3"/><circle cx="16" cy="8" r="1.5"/>',
+  key:'<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l2 2M18 5l2 2"/>',
+  eye:'<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+  comet:'<path d="M14 4c4-1 6 1 6 1s2 2 1 6c-2 2-5 3-8 3l-3-3c0-3 1-5 4-7Z"/><path d="m7 17-5 5M9 20l-2 2M4 16l-2 2"/>',
+  medal:'<circle cx="12" cy="15" r="6"/><path d="m8 10-2-7h4l2 5 2-5h4l-2 7"/>',
+  lock:'<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/>',
+  boltCircle:'<circle cx="12" cy="12" r="9"/><path d="m13 5-5 8h4l-1 6 5-8h-4l1-6Z"/>',
+  infinity:'<path d="M7 16c-4 0-5-8 0-8 3 0 5 4 5 4s2 4 5 4c5 0 4-8 0-8-3 0-5 4-5 4s-2 4-5 4Z"/>',
+  puzzle:'<path d="M9 4h3v3a2 2 0 1 0 4 0V4h4v4h-3a2 2 0 1 0 0 4h3v8h-5a2 2 0 1 0-4 0H7v-5a2 2 0 1 0 0-4H4V7h5V4Z"/>'
+};
+function normalizeCustomBadgeIcon(value){
+  // Firestore may contain an old/invalid icon value. Never expose that value
+  // as visible text. Only known SVG keys are allowed to reach the renderer.
+  if(typeof value !== 'string') return 'star';
+  const key = value.trim();
+  return Object.prototype.hasOwnProperty.call(ICONS_FOR_RENDER, key) ? key : 'star';
+}
+function customBadgeIconSvg(key){
+  const safeKey = normalizeCustomBadgeIcon(key);
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICONS_FOR_RENDER[safeKey]}</svg>`;
+}
+function customBadgeHtml(b){
+  const color = /^#[0-9a-fA-F]{6}$/.test(b?.color || '') ? b.color : '#FF7A33';
+  const iconKey = normalizeCustomBadgeIcon(b?.icon);
+  const name = escapeHtml(b?.name || 'Badge');
+  return `<span class="yap-custom-badge" style="--badge-color:${color}"><span class="yap-custom-badge-icon">${customBadgeIconSvg(iconKey)}</span><span class="yap-custom-badge-label">${name}</span></span>`;
+}
 function badgesHtmlForUser(u, isSelf){
   if(!u) return '';
   let html = '';
+  // Built-in badges always render through the original BADGE_ICONS map.
   if(u.role === 'admin') html += badgePillHtml('admin', 'Admin', 'tier-admin');
-  if(Array.isArray(u.badges) && u.badges.length) html += '<span class="yap-badge-list">'+u.badges.map(b=>`<span class="yap-custom-badge" style="--badge-color:${b.color||'#FF7A33'}"><span class="yap-custom-badge-icon">${escapeHtml(b.icon||'⭐')}</span>${escapeHtml(b.name||'Badge')}</span>`).join('')+'</span>';
+
+  const custom = Array.isArray(u.badges) ? u.badges : [];
+  if(custom.length) {
+    html += '<span class="yap-badge-list">' + custom.map(customBadgeHtml).join('') + '</span>';
+  }
+
   const count = isSelf
     ? unlockedSecrets.size
     : (u.secrets && typeof u.secrets === 'object' ? Object.values(u.secrets).filter(Boolean).length : 0);
@@ -3367,6 +3410,9 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
   .yap-custom-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;font-size:10px;line-height:1.35;font-weight:700;vertical-align:middle;border:1px solid color-mix(in srgb,var(--badge-color) 55%,transparent);background:color-mix(in srgb,var(--badge-color) 16%,transparent);color:var(--text);white-space:nowrap}
   .yap-custom-badge-icon{display:inline-grid;place-items:center;width:13px;height:13px;color:var(--badge-color)}
   .yap-custom-badge-icon svg{width:13px;height:13px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .yap-custom-badge-label{display:inline-block;line-height:1}
+  .yap-custom-badge-icon{font-size:0;line-height:0}
+
   .yap-badge-list{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;margin-left:3px}
   .yap-badge-grid{display:flex;flex-direction:column;gap:9px;margin-top:12px}
   .yap-badge-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--bg-input)}
@@ -3447,8 +3493,8 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
 
   function badgeHtml(b) {
     const color = /^#[0-9a-fA-F]{6}$/.test(b?.color || '') ? b.color : '#FF7A33';
-    const icon = ICONS[b?.icon] ? b.icon : 'star';
-    return `<span class="yap-custom-badge" style="--badge-color:${color}"><span class="yap-custom-badge-icon">${iconSvg(icon)}</span>${esc(b?.name || 'Badge')}</span>`;
+    const iconKey = (typeof b?.icon === 'string' && ICONS[b.icon]) ? b.icon : 'star';
+    return `<span class="yap-custom-badge" style="--badge-color:${color}"><span class="yap-custom-badge-icon">${iconSvg(iconKey)}</span><span class="yap-custom-badge-label">${esc(b?.name || 'Badge')}</span></span>`;
   }
 
   function customBadges(u) {
@@ -3470,8 +3516,14 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
     const uid = $('profile-backdrop')?.dataset.uid;
     if (profileBadges && uid && users.has(uid)) {
       const u = users.get(uid);
-      const existingAdmin = u.role === 'admin' ? badgePillHtmlSafe('admin', 'Admin', 'tier-admin') : '';
-      profileBadges.innerHTML = existingAdmin + customBadges(u);
+      // Re-render the complete badge stack. The old patch rebuilt this area
+      // from only admin + custom badges, which erased the built-in secret badges.
+      if (typeof badgesHtmlForUser === 'function') {
+        const isSelf = ctx().currentUser && u.uid === ctx().currentUser.uid;
+        profileBadges.innerHTML = badgesHtmlForUser(u, isSelf);
+      } else {
+        profileBadges.innerHTML = customBadges(u);
+      }
     }
   }
 
@@ -3525,20 +3577,37 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
     const err = $('yap-badge-error');
     err.style.display = 'none';
     const firestore = ctx().db;
-    if (!firestore || !target) return;
+    if (!firestore || !target) return false;
     try {
-      const { updateDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-      await updateDoc(doc(firestore, 'users', target.uid), { badges });
-      target.badges = badges;
+      const { runTransaction, doc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+      const ref = doc(firestore, 'users', target.uid);
+      const cleanBadges = (Array.isArray(badges) ? badges : []).map((b, i) => ({
+        id: String(b?.id || ('badge_' + Date.now().toString(36) + '_' + i)),
+        name: String(b?.name || 'Badge').slice(0, 32),
+        icon: (typeof b?.icon === 'string' && ICONS[b.icon]) ? b.icon : 'star',
+        color: /^#[0-9a-fA-F]{6}$/.test(b?.color || '') ? b.color : '#FF7A33'
+      }));
+
+      await runTransaction(firestore, async transaction => {
+        const snap = await transaction.get(ref);
+        const current = snap.exists() && Array.isArray(snap.data()?.badges) ? snap.data().badges : [];
+        // No artificial badge-count limit. The entire custom badge collection
+        // is written back, while built-in Admin/Secret badges remain separate.
+        transaction.set(ref, { badges: cleanBadges }, { merge: true });
+      });
+
+      target.badges = cleanBadges;
       users.set(target.uid, target);
       renderManager();
       refreshBadges();
+      return true;
     } catch (e) {
       console.error('Badge save failed:', e);
       err.textContent = e?.code === 'permission-denied'
-        ? 'Firestore rejected this badge change. Make sure the updated rules are deployed.'
+        ? 'Firestore rejected this badge change. Deploy the updated firestore.rules first.'
         : 'Could not save badges.';
       err.style.display = 'block';
+      return false;
     }
   }
 
@@ -3585,8 +3654,9 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
       icon: selectedIcon,
       color: /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#FF7A33'
     });
-    await saveBadges(badges);
-    $('yap-badge-name').value = '';
+    // Intentionally no 2-badge limit. Custom badges can grow with the profile.
+    const saved = await saveBadges(badges);
+    if (saved) $('yap-badge-name').value = '';
   };
 
   $('yap-badge-cancel').onclick = () => {
@@ -3615,32 +3685,14 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
     installButton();
   }
 
-  window.BADGE_ICONS = ICONS;
+  window.YAPPATHON_CUSTOM_BADGE_ICONS = ICONS;
+  window.BADGE_ICONS = Object.assign(window.BADGE_ICONS || {}, ICONS);
   window.YappathonCustomBadges = { openManager, refresh: refreshBadges };
   renderPicker();
   setInterval(syncFromContext, 1500);
   setTimeout(syncFromContext, 500);
 })();
-
-
-// YAPPATHON VOICE CONTEXT BRIDGE
-// Exposes read-only getters for the separate voice module without
-// leaking mutable app state into the global namespace.
-window.YappathonVoiceContext = {
-  get db(){ return db; },
-  get currentUser(){ return currentUser; },
-  get profile(){ return profile; },
-  get userCache(){ return userCache; },
-  get dmCache(){ return dmCache; },
-  get currentConvoType(){ return currentConvoType; },
-  get currentDmId(){ return currentDmId; },
-  get currentChannel(){ return currentChannel; },
-  toast
-};
-
 </script>
 
-
-<script type="module" src="./voice.js"></script>
 </body>
 </html>
