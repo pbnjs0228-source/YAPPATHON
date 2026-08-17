@@ -9,7 +9,6 @@ service cloud.firestore {
       return rootAdmin() || (signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
     }
 
-    // USERS / PROFILES / TIMETABLE / SECRETS
     match /users/{uid} {
       allow read: if signedIn();
       allow create: if signedIn() && request.auth.uid == uid && request.resource.data.uid == uid && request.resource.data.email == request.auth.token.email;
@@ -21,19 +20,17 @@ service cloud.firestore {
       }
     }
 
-    // PUBLIC CHANNELS
     match /channels/{channelId} {
       allow read: if signedIn();
       allow create, update, delete: if signedIn() && admin();
       match /messages/{messageId} {
         allow read: if signedIn();
         allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-        allow update: if signedIn() && (admin() || (resource.data.uid == request.auth.uid && request.resource.data.uid == resource.data.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text','editedAt','username','photoBase64'])));
+        allow update: if signedIn() && (admin() || (resource.data.uid == request.auth.uid && request.resource.data.uid == resource.data.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text','editedAt','username','photoBase64','reactions'])));
         allow delete: if signedIn() && (resource.data.uid == request.auth.uid || admin());
       }
     }
 
-    // DMS / GROUP DMS
     match /dms/{dmId} {
       allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.members is list && request.auth.uid in request.resource.data.members;
@@ -47,253 +44,95 @@ service cloud.firestore {
       }
     }
 
-    // COLLECTION-GROUP ACCESS USED BY PROFILE HISTORY SYNC.
-    // A user may only query/update messages that they themselves authored.
     match /{path=**}/messages/{messageId} {
       allow read: if signedIn() && resource.data.uid == request.auth.uid;
       allow update: if signedIn() && resource.data.uid == request.auth.uid && request.resource.data.uid == resource.data.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['username','photoBase64']);
     }
 
-    // VOICE CALLS.
-    // WebRTC media stays peer-to-peer. Firestore stores only call state,
-    // invitations, presence and signaling messages.
+    // Voice calls: signaling/presence only. Audio stays peer-to-peer.
     match /voiceCalls/{callId} {
       function callParticipant() {
         return signedIn() && (
-          resource.data.kind == 'channel'
-          || request.auth.uid in resource.data.members
+          resource.data.kind == 'channel' || request.auth.uid in resource.data.members
         );
       }
 
       allow read: if callParticipant();
-
       allow create: if signedIn()
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.active == true
-        && request.resource.data.kind in ['channel', 'dm', 'group']
+        && request.resource.data.kind in ['channel','dm','group']
         && request.resource.data.contextId is string
         && request.resource.data.name is string
         && request.resource.data.members is list
         && (
-          (request.resource.data.kind == 'channel'
-            && request.resource.data.members.size() == 0
-            && callId == 'channel_' + request.resource.data.contextId)
+          (request.resource.data.kind == 'channel' && request.resource.data.members.size() == 0 && callId == 'channel_' + request.resource.data.contextId)
           ||
-          (request.resource.data.kind == 'dm'
-            && request.auth.uid in request.resource.data.members
-            && request.resource.data.members.size() == 2
-            && callId == 'call_' + request.resource.data.contextId)
+          (request.resource.data.kind == 'dm' && request.auth.uid in request.resource.data.members && request.resource.data.members.size() == 2 && callId == 'call_' + request.resource.data.contextId)
           ||
-          (request.resource.data.kind == 'group'
-            && request.auth.uid in request.resource.data.members
-            && request.resource.data.members.size() >= 3
-            && request.resource.data.members.size() <= 20
-            && callId == 'call_' + request.resource.data.contextId)
+          (request.resource.data.kind == 'group' && request.auth.uid in request.resource.data.members && request.resource.data.members.size() >= 3 && request.resource.data.members.size() <= 20 && callId == 'call_' + request.resource.data.contextId)
         );
-
-      allow update: if callParticipant()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active', 'updatedAt', 'endedAt']);
-
+      allow update: if callParticipant() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active','updatedAt','endedAt']);
       allow delete: if false;
 
       match /invites/{uid} {
-        allow read: if signedIn() && (
-          request.auth.uid == uid
-          || request.auth.uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members
-          || get(/databases/$(database)/documents/voiceCalls/$(callId)).data.createdBy == request.auth.uid
-        );
-
-        allow create: if signedIn()
-          && request.auth.uid == get(/databases/$(database)/documents/voiceCalls/$(callId)).data.createdBy
-          && uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members
-          && request.resource.data.uid == uid
-          && request.resource.data.status == 'ringing';
-
-        allow update: if signedIn()
-          && request.auth.uid == uid
-          && request.resource.data.uid == resource.data.uid
-          && request.resource.data.status in ['accepted', 'declined', 'ringing'];
-
+        allow read: if signedIn() && (request.auth.uid == uid || request.auth.uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members || get(/databases/$(database)/documents/voiceCalls/$(callId)).data.createdBy == request.auth.uid);
+        allow create: if signedIn() && request.auth.uid == get(/databases/$(database)/documents/voiceCalls/$(callId)).data.createdBy && uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members && request.resource.data.uid == uid && request.resource.data.status == 'ringing';
+        allow update: if signedIn() && request.auth.uid == uid && request.resource.data.uid == resource.data.uid && request.resource.data.status in ['accepted','declined','ringing'];
         allow delete: if false;
       }
 
-      // NOTE: these two intentionally do NOT use callParticipant() — inside a
-      // nested match, `resource` refers to the presence/signal doc being
-      // written, not the parent call doc, so the participant check is done
-      // with an explicit get() on the call doc instead.
       match /presence/{uid} {
-        allow read: if signedIn() && (
-          get(/databases/$(database)/documents/voiceCalls/$(callId)).data.kind == 'channel'
-          || request.auth.uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members
-        );
-        allow create, update: if signedIn()
-          && request.auth.uid == uid
-          && request.resource.data.uid == uid
-          && (
-            get(/databases/$(database)/documents/voiceCalls/$(callId)).data.kind == 'channel'
-            || request.auth.uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members
-          );
+        allow read: if signedIn() && (get(/databases/$(database)/documents/voiceCalls/$(callId)).data.kind == 'channel' || request.auth.uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members);
+        allow create, update: if signedIn() && request.auth.uid == uid && request.resource.data.uid == uid && (get(/databases/$(database)/documents/voiceCalls/$(callId)).data.kind == 'channel' || request.auth.uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members);
         allow delete: if signedIn() && request.auth.uid == uid;
       }
 
       match /signals/{signalId} {
-        allow read: if signedIn() && (
-          get(/databases/$(database)/documents/voiceCalls/$(callId)).data.kind == 'channel'
-          || request.auth.uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members
-        );
-        allow create: if signedIn()
-          && (
-            get(/databases/$(database)/documents/voiceCalls/$(callId)).data.kind == 'channel'
-            || request.auth.uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members
-          )
-          && request.resource.data.from == request.auth.uid
-          && request.resource.data.to is string
-          && request.resource.data.type in ['offer', 'answer', 'candidate'];
+        allow read: if signedIn() && (get(/databases/$(database)/documents/voiceCalls/$(callId)).data.kind == 'channel' || request.auth.uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members);
+        allow create: if signedIn() && (get(/databases/$(database)/documents/voiceCalls/$(callId)).data.kind == 'channel' || request.auth.uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members) && request.resource.data.from == request.auth.uid && request.resource.data.to is string && request.resource.data.type in ['offer','answer','candidate'];
         allow update, delete: if false;
       }
     }
 
-    // ACHIEVEMENT / SECRET DOCUMENTS
     match /secrets/{secretId} {
       allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
       allow update, delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    // YAPPATHON VOICE CHAT RULES
-    // WebRTC media stays peer-to-peer. Firestore stores only call state,
-    // invitations, presence and signaling messages.
-    match /voiceCalls/{callId} {
-      function callParticipant() {
-        return isSignedIn() && (
-          resource.data.kind == 'channel'
-          || request.auth.uid in resource.data.members
-        );
-      }
+    // Multiplayer Pool. Four-player lobby, host-controlled match state.
+    match /poolRooms/{roomId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.status == 'lobby'
+        && request.resource.data.playerCount == 0
+        && request.resource.data.playerIds is list
+        && request.resource.data.playerIds.size() == 0;
+      allow update: if signedIn() && (
+        (
+          request.auth.uid == resource.data.hostUid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','startedAt','state','turn'])
+        )
+        ||
+        (
+          resource.data.status == 'lobby'
+          && request.resource.data.status == 'lobby'
+          && request.auth.uid in request.resource.data.playerIds
+          && !(request.auth.uid in resource.data.playerIds)
+          && request.resource.data.playerCount == resource.data.playerCount + 1
+          && request.resource.data.playerCount <= 4
+          && request.resource.data.playerIds.size() == request.resource.data.playerCount
+        )
+      );
+      allow delete: if signedIn() && request.auth.uid == resource.data.hostUid;
 
-      allow read: if callParticipant();
-
-      allow create: if isSignedIn()
-        && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.active == true
-        && request.resource.data.kind in ['channel', 'dm', 'group']
-        && request.resource.data.contextId is string
-        && request.resource.data.name is string
-        && request.resource.data.members is list
-        && (
-          (request.resource.data.kind == 'channel'
-            && request.resource.data.members.size() == 0
-            && callId == 'channel_' + request.resource.data.contextId)
-          ||
-          (request.resource.data.kind == 'dm'
-            && request.auth.uid in request.resource.data.members
-            && request.resource.data.members.size() == 2
-            && callId == 'call_' + request.resource.data.contextId)
-          ||
-          (request.resource.data.kind == 'group'
-            && request.auth.uid in request.resource.data.members
-            && request.resource.data.members.size() >= 3
-            && request.resource.data.members.size() <= 20
-            && callId == 'call_' + request.resource.data.contextId)
-        );
-
-      allow update: if callParticipant()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active', 'updatedAt', 'endedAt']);
-
-      allow delete: if false;
-
-      match /invites/{uid} {
-        allow read: if isSignedIn() && (
-          request.auth.uid == uid
-          || request.auth.uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members
-          || get(/databases/$(database)/documents/voiceCalls/$(callId)).data.createdBy == request.auth.uid
-        );
-
-        allow create: if isSignedIn()
-          && request.auth.uid == get(/databases/$(database)/documents/voiceCalls/$(callId)).data.createdBy
-          && uid in get(/databases/$(database)/documents/voiceCalls/$(callId)).data.members
-          && request.resource.data.uid == uid
-          && request.resource.data.status == 'ringing';
-
-        allow update: if isSignedIn()
-          && request.auth.uid == uid
-          && request.resource.data.uid == resource.data.uid
-          && request.resource.data.status in ['accepted', 'declined', 'ringing'];
-
-        allow delete: if false;
-      }
-
-      match /presence/{uid} {
-        allow read: if callParticipant();
-        allow create, update: if isSignedIn()
-          && request.auth.uid == uid
-          && callParticipant()
-          && request.resource.data.uid == uid;
-        allow delete: if isSignedIn() && request.auth.uid == uid;
-      }
-
-      match /signals/{signalId} {
-        allow read: if callParticipant();
-        allow create: if callParticipant()
-          && request.resource.data.from == request.auth.uid
-          && request.resource.data.to is string
-          && request.resource.data.type in ['offer', 'answer', 'candidate'];
-        allow update, delete: if false;
+      match /players/{uid} {
+        allow read: if signedIn();
+        allow create, update: if signedIn() && request.auth.uid == uid && request.resource.data.uid == uid;
+        allow delete: if signedIn() && request.auth.uid == uid;
       }
     }
-  }
-  }
-  }
-  }
-  }
-  }
-  }
-  }
-  }
-// MULTIPLAYER POOL
-match /poolRooms/{roomId} {
-  allow read: if signedIn();
-  allow create: if signedIn()
-    && request.resource.data.hostUid == request.auth.uid
-    && request.resource.data.status == 'lobby'
-    && request.resource.data.playerCount == 0
-    && request.resource.data.playerIds is list
-    && request.resource.data.playerIds.size() == 0;
-  allow update: if signedIn() && (
-    (
-      request.auth.uid == resource.data.hostUid
-      && request.resource.data.diff(resource.data).affectedKeys()
-        .hasOnly(['status','startedAt','state','turn'])
-    )
-    ||
-    (
-      resource.data.status == 'lobby'
-      && request.resource.data.status == 'lobby'
-      && request.auth.uid in request.resource.data.playerIds
-      && !(request.auth.uid in resource.data.playerIds)
-      && request.resource.data.playerCount == resource.data.playerCount + 1
-      && request.resource.data.playerCount <= 4
-      && request.resource.data.playerIds.size() == request.resource.data.playerCount
-    )
-  );
-  allow delete: if signedIn() && request.auth.uid == resource.data.hostUid;
-  match /players/{uid} {
-    allow read: if signedIn();
-    allow create, update: if signedIn()
-      && request.auth.uid == uid
-      && request.resource.data.uid == uid;
-    allow delete: if signedIn() && request.auth.uid == uid;
-  }
-}
-
-  }
   }
 }
