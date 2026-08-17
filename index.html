@@ -633,7 +633,7 @@
     <ul class="channel-list dm-list" id="dm-list"></ul>
 
     <div class="section-label" style="margin-top:6px;">Games</div>
-    <div class="games-tab" id="games-tab" role="button" tabindex="0"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M8 9h8a5 5 0 0 1 4.8 6.4l-.7 2.3a2.5 2.5 0 0 1-4.4.7L14 16H10l-1.7 2.4a2.5 2.5 0 0 1-4.4-.7l-.7-2.3A5 5 0 0 1 8 9Z"/><path d="M8 12v4M6 14h4M16.5 13.5h.01M19 15h.01"/></svg>Multiplayer Games <span class="badge-soon">Pool</span></div>
+    <div class="games-tab" id="games-tab" role="button" tabindex="0"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M8 9h8a5 5 0 0 1 4.8 6.4l-.7 2.3a2.5 2.5 0 0 1-4.4.7L14 16H10l-1.7 2.4a2.5 2.5 0 0 1-4.4-.7l-.7-2.3A5 5 0 0 1 8 9Z"/><path d="M8 12v4M6 14h4M16.5 13.5h.01M19 15h.01"/></svg>Multiplayer Games <span class="badge-soon">Soon</span></div>
 
     <style>
       #enter-voice-chat-button {
@@ -3288,7 +3288,7 @@ function presenceWatch(call){
 }
 function watchCall(call){
   if(stopCallWatch)stopCallWatch();
-  stopCallWatch=onSnapshot(callRef(call),snap=>{if(!activeCall||activeCall.id!==call)return;if(!snap.exists()||snap.data().active!==true)leave()});
+  stopCallWatch=onSnapshot(callRef(call),snap=>{if(!activeCall||activeCall.id!==call)return;if(!snap.exists()||snap.data().active!==true||!fresh(snap.data().updatedAt))leave()});
 }
 function startHeartbeat(){clearInterval(heartbeatTimer);heartbeatTimer=setInterval(()=>{if(activeCall)updateDoc(callRef(activeCall.id),{updatedAt:serverTimestamp()}).catch(()=>{})},15000)}
 function stopHeartbeat(){clearInterval(heartbeatTimer);heartbeatTimer=null}
@@ -3692,33 +3692,7 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
   setInterval(syncFromContext, 1500);
   setTimeout(syncFromContext, 500);
 })();
-
 </script>
 
-
-<script type="module" src="./pool.js">
-
-
-
-// YAPPATHON VOICE CONTEXT BRIDGE
-// Exposes read-only getters for the separate voice module without
-// leaking mutable app state into the global namespace.
-window.YappathonVoiceContext = {
-  get db(){ return db; },
-  get currentUser(){ return currentUser; },
-  get profile(){ return profile; },
-  get userCache(){ return userCache; },
-  get dmCache(){ return dmCache; },
-  get currentConvoType(){ return currentConvoType; },
-  get currentDmId(){ return currentDmId; },
-  get currentChannel(){ return currentChannel; },
-  toast
-};
-
-</script>
-
-
-
-<script type="module" src="./voice.js"></script>
 </body>
 </html>
