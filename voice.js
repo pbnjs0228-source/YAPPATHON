@@ -3,7 +3,7 @@
 // network briefly delays the host heartbeat. This wrapper remembers the last
 // call context and transparently rejoins only when the Firestore call is still
 // active. An explicit user leave is never auto-rejoined.
-import './pool-final.js';
+import './pool-multi.js';
 
 const ctx = () => window.YappathonVoiceContext || {};
 let lastCallId = null;
